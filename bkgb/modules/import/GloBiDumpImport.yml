@@ -1,0 +1,5 @@
+prefix : https://leca.osug.fr/bkgb
+internal_id : globi.1
+data_source : GloBi
+job_type : dump_import
+dump_location : https://depot.globalbioticinteractions.org/snapshot/target/data/interactions.nq.gz
