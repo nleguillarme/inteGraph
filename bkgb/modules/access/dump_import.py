@@ -25,32 +25,6 @@ RDF/XML, N-Triples, N-Quads and Turtle.
 
 """
 
-# def get_graph(job):#, **options):
-#     graph = bonobo.Graph()
-#     graph.add_chain(
-#         job.extract,
-#         job.transform,
-#         job.load,ConjunctiveGraph
-#         bonobo.Limit(10),
-#         bonobo.PrettyPrinter(),
-#     )
-#     return graph
-
-
-# def get_services():#**options):
-#     http = requests.Session()
-#     http.headers = {'User-Agent': 'Monkeys!'}
-#     return {
-#         'http': http
-#     }
-
-# Example of dump_import config file
-# GloBiDumpImport.yml
-#   internal_id : globi.1
-#   data_source : GloBi
-#   job_type : dump_import
-#   dump_location : https://depot.globalbioticinteractions.org/snapshot/target/data/interactions.nq.gz
-
 class DumpImport(): #Configurable):
 
     def __init__(self, cfg):
@@ -94,9 +68,6 @@ class DumpImport(): #Configurable):
         self.convert_to_nquads(dump_file)
         logging.debug('Leave DumpImport.run')
 
-
-
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser("dump_import")
@@ -108,10 +79,3 @@ if __name__ == '__main__':
         cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
         job = DumpImport(cfg)
         job.run()
-
-        #parser = bonobo.get_argument_parser()
-        #with bonobo.parse_args(parser) as options:
-        # bonobo.run(
-        #     get_graph(job),# **options),
-        #     services=get_services()#**options)
-        # )
