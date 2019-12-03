@@ -13,6 +13,7 @@ def read_csv_header(csv_file, delimiter=","):
         reader = csv.reader(f, delimiter=delimiter)
         header = next(reader)
         f.close()
+    # pd.read_csv(self.csv_file, sep=None, nrows=0).columns.tolist()
     return header
 
 

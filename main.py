@@ -49,6 +49,11 @@ if __name__ == "__main__":
     load_job_cfg = parse_conf_file(os.path.join(root_dir, scheduler_cfg["loadJob"]))
     import_jobs_dir = os.path.join(root_dir, scheduler_cfg["importJob"])
 
+    # Create reports directory
+    reports_dir = os.path.join(root_dir, "reports")
+    if not os.path.exists(reports_dir):
+        os.makedirs(reports_dir)
+
     # Create quads directory
     quads_dir = os.path.join(root_dir, scheduler_cfg["quadsDirectory"])
     if not os.path.exists(quads_dir):
@@ -67,6 +72,7 @@ if __name__ == "__main__":
                 cfg["quadsDirectory"] = quads_dir
                 cfg["graphURI"] = properties["graphURI"]
                 cfg["rootDir"] = import_jobs_dir
+                cfg["reportsDir"] = reports_dir
                 job = job_factory.get_import_job(cfg)
                 job_list.append(job)
 
@@ -75,7 +81,7 @@ if __name__ == "__main__":
             os.path.join(root_dir, scheduler_cfg["loadJob"])
         )
     )
-    # job_list.append(BulkLoader(load_job_cfg))
+    job_list.append(BulkLoader(load_job_cfg))
 
     # Run jobs
     for job in job_list:
