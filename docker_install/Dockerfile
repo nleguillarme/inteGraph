@@ -77,12 +77,6 @@ RUN set -ex \
         /usr/share/man \
         /usr/share/doc \
         /usr/share/doc-base
-#    && groupadd -g 999 docker \
-#    && usermod -a -G docker airflow
-
-COPY requirements.txt /tmp/
-RUN pip install --requirement /tmp/requirements.txt
-COPY . /tmp/
 
 COPY script/entrypoint.sh /entrypoint.sh
 COPY config/airflow.cfg ${AIRFLOW_USER_HOME}/airflow.cfg

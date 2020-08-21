@@ -7,22 +7,45 @@ class ColumnNotFoundException(Exception):
     pass
 
 
+def read(file_path):
+    df = pd.read_csv(file_path, sep=",")
+    return df
+
+
+def write(df, file_path):
+    df.to_csv(file_path, sep=",", index=False)
+
+
 def read_csv_header(csv_file, delimiter=","):
     csv.field_size_limit(sys.maxsize)
     with open(csv_file, "r") as f:
         reader = csv.reader(f, delimiter=delimiter)
         header = next(reader)
         f.close()
-    # pd.read_csv(self.csv_file, sep=None, nrows=0).columns.tolist()
     return header
+
+
+def get_nb_records_in_csv(csv_file, delimiter=",", with_header=True):
+    csv.field_size_limit(sys.maxsize)
+    with open(csv_file, newline="") as f:
+        reader = csv.reader(f, delimiter=delimiter)
+        rec_count = sum(1 for row in reader)
+        f.close()
+    return rec_count - 1 if with_header else rec_count
 
 
 def get_csv_file_reader(csv_file, columns, delimiter=",", chunksize=100000):
     header = read_csv_header(csv_file, delimiter)
-    for column in columns:
-        if column not in header:
-            raise ColumnNotFoundException()
-    df_chunk = pd.read_csv(
-        csv_file, sep=delimiter, chunksize=chunksize, usecols=columns
+    if columns:
+        for column in columns:
+            if column not in header:
+                raise ColumnNotFoundException()
+    df_reader = pd.read_csv(
+        csv_file,
+        sep=delimiter,
+        header=0,
+        skipinitialspace=True,
+        chunksize=chunksize,
+        usecols=columns,
     )
-    return df_chunk
+    return df_reader

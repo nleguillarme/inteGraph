@@ -1,0 +1,88 @@
+version: '2.1'
+services:
+
+    neo4j:
+        build:
+          context: .
+          dockerfile: Dockerfile.neo4j
+          args:
+            - USER_UID=1001
+            - USER_GID=1001
+        image: neo4j-n10s:latest
+        environment:
+            - NEO4J_AUTH=none
+        ports:
+            - "7474:7474"
+            - "7687:7687"
+        volumes:
+            - ~/.neo4j/data:/data
+            - ~/.neo4j/import:/var/lib/neo4j/import
+            - ~/.neo4j/logs:/logs
+            - ./config/test/dumps:/dumps
+
+    # virtuoso:
+    #     #image: openlink/virtuoso-opensource-7:latest
+    #     image: tenforce/virtuoso:latest
+    #     user: 1001:1001
+    #     environment:
+    #         - DBA_PASSWORD=dba
+    #     ports:
+    #         - "1111:1111"
+    #         - "8890:8890"
+    #     volumes:
+    #         - ~/.virtuoso:/database
+    #         - ./config/test/dumps:/data
+
+    nomer:
+        build: https://github.com/nleguillarme/nomer-docker.git
+        image: nomer-docker
+        ports:
+            - "5000:5000"
+        volumes:
+            - .tmp/.nomer:/.nomer
+
+    postgres:
+        image: postgres:9.6
+        environment:
+            - POSTGRES_USER=airflow
+            - POSTGRES_PASSWORD=airflow
+            - POSTGRES_DB=airflow
+
+    webserver:
+        build:
+          context: .
+          dockerfile: Dockerfile.airflow
+          args:
+            - DOCKER_UID=1001
+            - DOCKER_GID=999
+        image: custom-airflow
+        restart: always
+        depends_on:
+            - postgres
+            - nomer
+            - neo4j
+        environment:
+            - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+            # - AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL=5
+            - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True
+            - AIRFLOW__SCHEDULER__CATCHUP_BY_DEFAULT=False
+            - AIRFLOW__CORE__LOAD_EXAMPLES=False
+            - AIRFLOW__WEBSERVER__DAG_ORIENTATION=TB
+        volumes:
+            # - ./dags:/usr/local/airflow/dags
+            - ./config:/usr/local/airflow/config
+            - .:/usr/local/airflow/dags
+            - .tmp/:/usr/local/airflow/.tmp
+            - ./jars:/usr/local/airflow/jars
+            - /var/run/docker.sock:/var/run/docker.sock
+            - /usr/bin/docker:/usr/bin/docker
+            # Uncomment to include custom plugins
+            # - ./plugins:/usr/local/airflow/plugins
+        ports:
+            - "8080:8080"
+        command: webserver
+        healthcheck:
+            test: ["CMD-SHELL", "[ -f /usr/local/airflow/airflow-webserver.pid ]"]
+            interval: 30s
+            timeout: 30s
+            retries: 3

@@ -5,6 +5,7 @@ from biodivgraph.building.linking import TripleLinkingEngine
 
 def make_taxname_config():
     return {
+        "rootDir": "./config/test",
         "subject": {
             "columnName": "consumer_gbif_key",
             "transform": [],
@@ -12,7 +13,7 @@ def make_taxname_config():
         },
         "predicate": {
             "columnName": "interaction_type",
-            "mapping": "/home/leguilln/workspace/BiodivGraph/example/biodiv-graph/tables/interactions_mapping.yml",
+            "mapping": "mappings/inter-to-uri.yml",
         },
         "object": {
             "columnName": "resource_gbif_key",
@@ -24,6 +25,7 @@ def make_taxname_config():
 
 def make_taxid_config():
     return {
+        "rootDir": "./config/test",
         "subject": {
             "columnName": "consumer_gbif_key",
             "transform": [{"prefix": "GBIF:"}],
@@ -31,7 +33,7 @@ def make_taxid_config():
         },
         "predicate": {
             "columnName": "interaction_type",
-            "mapping": "/home/leguilln/workspace/BiodivGraph/example/biodiv-graph/tables/interactions_mapping.yml",
+            "mapping": "mappings/inter-to-uri.yml",
         },
         "object": {
             "columnName": "resource_gbif_key",

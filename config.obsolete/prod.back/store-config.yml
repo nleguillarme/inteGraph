@@ -1,0 +1,4 @@
+endpointType : sparql
+endpointURL : http://localhost:8890/sparql/
+remoteDirectory : /data
+

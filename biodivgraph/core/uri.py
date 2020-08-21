@@ -91,8 +91,11 @@ class URIMapper:
         self.logger = logging.getLogger(__name__)
         self.map = ID_PREFIXES
 
+    def is_valid_db_prefix(self, db_prefix):
+        return db_prefix in self.map
+
     def get_uri_prefix_from_db_prefix(self, db_prefix):
-        if db_prefix in self.map:
+        if self.is_valid_db_prefix(db_prefix):
             return self.map[db_prefix]["url_prefix"]
         else:
             raise ValueError("No known URI for prefix ", db_prefix)

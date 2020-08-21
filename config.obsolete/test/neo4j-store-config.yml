@@ -1,0 +1,6 @@
+internalId : test_neo4j
+service : Neo4jRDFImport
+remoteDirectory : /dumps
+userName : neo4j
+userPassword : password
+scheduleInterval : "@once"

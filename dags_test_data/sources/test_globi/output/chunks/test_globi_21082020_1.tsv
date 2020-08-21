@@ -1,0 +1,4 @@
+sourceTaxonId,interactionTypeId,targetTaxonId
+EOL:12001243,http://purl.obolibrary.org/obo/RO_0002444,EOL:200336
+EOL:12001243,http://purl.obolibrary.org/obo/RO_0002444,EOL:200333
+EOL:12001242,http://purl.obolibrary.org/obo/RO_0002444,EOL_V2:200352

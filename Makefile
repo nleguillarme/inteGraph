@@ -3,6 +3,7 @@ init:
 		python setup.py install
 
 test:
+	  #docker build --build-arg DOCKER_UID=`id -u` --rm -t custom-airflow .
 		python -m pytest tests
 
 airflow:
@@ -18,9 +19,13 @@ main_dag:
 
 # FERNET_KEY := $(shell docker run puckel/docker-airflow python -c "from cryptography.fernet import Fernet; FERNET_KEY = Fernet.generate_key().decode(); print(FERNET_KEY)")
 
-docker_airflow:
+sequential:
 		#FERNET_KEY := $(shell docker run puckel/docker-airflow python -c "from cryptography.fernet import Fernet; FERNET_KEY = Fernet.generate_key().decode(); print(FERNET_KEY)")
 		docker run -d -p 8081:8080 -e FERNET_KEY="$(FERNET_KEY)" -v $(shell pwd):/usr/local/airflow/dags puckel/docker-airflow webserver
 		#docker run -d -e FERNET_KEY="$(FERNET_KEY)" -v $(shell pwd):/usr/local/airflow/dags puckel/docker-airflow
 
-.PHONY: init test airflow main_dag docker_airflow
+local:
+	#	docker build --build-arg DOCKER_UID=`id -u` --rm -t custom-airflow .
+		docker-compose -f docker-compose-LocalExecutor.yml up -d
+
+.PHONY: init test airflow main_dag sequential local

@@ -1,7 +1,0 @@
-properties : biodiv-graph.properties
-dataSources : dataSources
-importJob : importJobs
-integrationJob : integration-config.yml
-loadJob : virtuoso-store-config.yml
-quadsDirectory : dumps
-

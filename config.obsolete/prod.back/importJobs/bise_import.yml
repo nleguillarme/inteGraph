@@ -1,0 +1,5 @@
+internalId : bise
+dataSource : Bise
+jobType : tabularImport
+deleteTempFiles : False
+properties : bise.properties

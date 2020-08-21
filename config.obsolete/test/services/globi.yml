@@ -1,0 +1,7 @@
+internalId : test_globi
+dataSource : Globi
+service : TabData2RDF
+deleteTempFiles : False
+properties : globi.properties
+scheduleInterval : "@once"
+workers : 1

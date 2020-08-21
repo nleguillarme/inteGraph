@@ -1,0 +1,5 @@
+internalId : globi
+dataSource : GloBi
+jobType : dumpImport
+dumpLocation : https://depot.globalbioticinteractions.org/snapshot/target/data/interactions.nq.gz
+deleteTempFiles : False
