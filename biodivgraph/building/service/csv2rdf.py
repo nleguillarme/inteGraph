@@ -100,12 +100,13 @@ class CSV2RDF(Service):
         clean_dir(self.config.output_unreasoned_dir)
 
     def get_chunk_reader(self):
-        columns = [
-            self.properties.triplifier_conf.subject_column_name,
-            self.properties.triplifier_conf.predicate_column_name,
-            self.properties.triplifier_conf.object_column_name,
-            self.properties.triplifier_conf.references_column_name,
-        ]
+        # columns = [
+        #     self.properties.triplifier_conf.subject_column_name,
+        #     self.properties.triplifier_conf.predicate_column_name,
+        #     self.properties.triplifier_conf.object_column_name,
+        #     self.properties.triplifier_conf.references_column_name,
+        # ]
+        columns = None
         filepath = os.path.join(self.config.source_root_dir, self.properties.data_file)
         nb_records = get_nb_records_in_csv(filepath)
         return get_csv_file_reader(
@@ -144,7 +145,7 @@ class CSV2RDF(Service):
         # TODO : consider reusing triplifier from ontology-data-pipeline when
         # interactions will be supported (see https://github.com/biocodellc/ontology-data-pipeline/issues/60)
         # In that case, entity linking will have to be performed as a previous step (outside the pipeline preferably)
-        df = read(f_in).dropna()
+        df = read(f_in)  # .dropna()
         self.triplifier.run_mapping(df, wdir, f_out)
         move_file_to_dir(
             os.path.join(wdir, os.path.basename(f_out)), self.config.output_triples_dir
@@ -248,7 +249,7 @@ def main():
     args = parser.parse_args()
 
     config = read_config(args.cfg_file)
-    config.jars_location = "./jars"
+    config.jars_location = "jars"
     config.run_on_localhost = True
     process = CSV2RDF(config)
     process.run()

@@ -33,7 +33,7 @@ mappings:
       - [rdf:type, obo:GO_0044419~iri] # GO_0044419 : 'interspecies interaction between organisms'
       - p: obo:RO_0000057 # RO_0000057 : 'has participant'
         o:
-          mapping: src_tax
+          mapping: src_organism
           condition:
             function: equal
             parameters:
@@ -41,14 +41,54 @@ mappings:
               - [str2, $(id)]
       - p: obo:RO_0000057 # RO_0000057 : 'has participant'
         o:
-          mapping: tgt_tax
+          mapping: tgt_organism
           condition:
             function: equal
             parameters:
               - [str1, $(id)]
               - [str2, $(id)]
 
-  src_tax:
+  src_organism:
+    sources:
+      - [s.csv~csv]
+    s: null
+    po:
+      - [rdf:type, obo:CARO_0001010~iri] # CARO_0001010 : 'organism or virus or viroid'
+      # - [obo:BCO_0000087, $(sub)~iri] # BCO_0000087 : 'member of taxon'
+      - p: $(pred)
+        o:
+          mapping: tgt_organism
+          condition:
+            function: equal
+            parameters:
+              - [str1, $(id)]
+              - [str2, $(id)]
+      - p: obo:BCO_0000087
+        o:
+          mapping: taxon
+          condition:
+            function: equal
+            parameters:
+              - [str1, $(sub)~iri]
+              - [str2, $(iri)~iri]
+
+  tgt_organism:
+    sources:
+      - [o.csv~csv]
+    s: null
+    po:
+      - [rdf:type, obo:CARO_0001010~iri] # CARO_0001010 : 'organism or virus or viroid'
+      # - [obo:BCO_0000087, $(obj)~iri]
+      - p: obo:BCO_0000087
+        o:
+          mapping: taxon
+          condition:
+            function: equal
+            parameters:
+              - [str1, $(obj)~iri]
+              - [str2, $(iri)~iri]
+
+  src_organism:
     sources:
       - [s.csv~csv]
     s: null
@@ -64,10 +104,16 @@ mappings:
               - [str1, $(id)]
               - [str2, $(id)]
 
-  tgt_tax:
+  taxon:
     sources:
-      - [o.csv~csv]
-    s: null
+      - [taxon.csv~csv]
+    s: $(iri)
     po:
-      - [rdf:type, obo:CARO_0001010~iri] # CARO_0001010 : 'organism or virus or viroid'
-      - [obo:BCO_0000087, $(obj)~iri]
+      - p: dwc:scientificName
+        o:
+          value: $(scientific_name)
+          datatype: xsd:string
+      - p: dwc:taxonRank
+        o:
+          value: $(taxon_rank)
+          datatype: xsd:string

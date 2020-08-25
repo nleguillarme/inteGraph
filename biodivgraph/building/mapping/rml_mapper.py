@@ -81,8 +81,6 @@ class RMLMappingEngine:
             }
         )
 
-        print(df)
-
         df["id"] = df.index
 
         df_obj = df.loc[:, ["obj"]]
@@ -94,3 +92,36 @@ class RMLMappingEngine:
         df.to_csv(os.path.join(dst, "s.csv"), index=False)
         df_pred.to_csv(os.path.join(dst, "p.csv"), index=False)
         df_obj.to_csv(os.path.join(dst, "o.csv"), index=False)
+
+        df_sub_taxon = df[
+            [
+                "sub",
+                self.config.subject_name_column_name,
+                self.config.subject_rank_column_name,
+            ]
+        ].rename(
+            columns={
+                "sub": "iri",
+                self.config.subject_name_column_name: "scientific_name",
+                self.config.subject_rank_column_name: "taxon_rank",
+            }
+        )
+        df_obj_taxon = df[
+            [
+                "obj",
+                self.config.object_name_column_name,
+                self.config.object_rank_column_name,
+            ]
+        ].rename(
+            columns={
+                "obj": "iri",
+                self.config.object_name_column_name: "scientific_name",
+                self.config.object_rank_column_name: "taxon_rank",
+            }
+        )
+
+        df_taxon = df_sub_taxon.append(df_obj_taxon, ignore_index=True).drop_duplicates(
+            subset="iri"
+        )
+
+        df_taxon.to_csv(os.path.join(dst, "taxon.csv"), index=False)
