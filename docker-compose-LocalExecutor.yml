@@ -1,24 +1,24 @@
 version: '2.1'
 services:
 
-    neo4j:
-        build:
-          context: .
-          dockerfile: Dockerfile.neo4j
-          args:
-            - USER_UID=1001
-            - USER_GID=1001
-        image: neo4j-n10s:latest
-        environment:
-            - NEO4J_AUTH=none
-        ports:
-            - "7474:7474"
-            - "7687:7687"
-        volumes:
-            - ~/.neo4j/data:/data
-            - ~/.neo4j/import:/var/lib/neo4j/import
-            - ~/.neo4j/logs:/logs
-            - ./config/test/dumps:/dumps
+    # neo4j:
+    #     build:
+    #       context: .
+    #       dockerfile: Dockerfile.neo4j
+    #       args:
+    #         - USER_UID=1001
+    #         - USER_GID=1001
+    #     image: neo4j-n10s:latest
+    #     environment:
+    #         - NEO4J_AUTH=none
+    #     ports:
+    #         - "7474:7474"
+    #         - "7687:7687"
+    #     volumes:
+    #         - ~/.neo4j/data:/data
+    #         - ~/.neo4j/import:/var/lib/neo4j/import
+    #         - ~/.neo4j/logs:/logs
+    #         - ./config/test/dumps:/dumps
 
     # virtuoso:
     #     #image: openlink/virtuoso-opensource-7:latest
@@ -70,7 +70,7 @@ services:
             - AIRFLOW__WEBSERVER__DAG_ORIENTATION=TB
         volumes:
             # - ./dags:/usr/local/airflow/dags
-            - ./config:/usr/local/airflow/config
+            # - ./config:/usr/local/airflow/config
             - .:/usr/local/airflow/dags
             - .tmp/:/usr/local/airflow/.tmp
             - ./jars:/usr/local/airflow/jars

@@ -8,7 +8,7 @@ from airflow.operators.python_operator import PythonOperator
 from airflow.exceptions import AirflowException
 
 from biodivgraph.building.core.dag_template import DAGTemplate
-from biodivgraph.building.process import CSV2RDF
+from biodivgraph.building.service import CSV2RDF
 
 
 class CSV2RDFDAG(DAGTemplate):

@@ -1,14 +1,60 @@
 prefixes:
-  ex: "http://example.com/"
+  data_item: "http://test_csv_data.com/data_item"
+  interaction: "http://test_csv_data.com/interaction"
+  obo: "http://purl.obolibrary.org/obo/"
+  dwc: "http://rs.tdwg.org/dwc/terms/"
+  rdf: "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 
 mappings:
+  data_item:
+    sources:
+      - [s.csv~csv]
+    s: null #data_item:$(id)
+    po:
+      - [rdf:type, obo:IAO_0000027~iri] # IAO_0000027 : 'data item'
+      - p: dwc:associatedReferences
+        o:
+          value: $(references)
+          datatype: xsd:string
+      - p: http://purl.obolibrary.org/obo/IAO_0000136 # IAO_0000136 : 'is about'
+        o:
+          mapping: interactions
+          condition:
+            function: equal
+            parameters:
+              - [str1, $(id)]
+              - [str2, $(id)]
+
+  interactions:
+    sources:
+      - [p.csv~csv]
+    s: null #interaction:$(id)
+    po:
+      - [rdf:type, obo:GO_0044419~iri] # GO_0044419 : 'interspecies interaction between organisms'
+      - p: obo:RO_0000057 # RO_0000057 : 'has participant'
+        o:
+          mapping: src_tax
+          condition:
+            function: equal
+            parameters:
+              - [str1, $(id)]
+              - [str2, $(id)]
+      - p: obo:RO_0000057 # RO_0000057 : 'has participant'
+        o:
+          mapping: tgt_tax
+          condition:
+            function: equal
+            parameters:
+              - [str1, $(id)]
+              - [str2, $(id)]
+
   src_tax:
     sources:
       - [s.csv~csv]
     s: null
     po:
-      - [http://www.w3.org/1999/02/22-rdf-syntax-ns#type, http://purl.obolibrary.org/obo/CARO_0010004~iri]
-      - [http://purl.obolibrary.org/obo/RO_0002350, $(sub)~iri]
+      - [rdf:type, obo:CARO_0001010~iri] # CARO_0001010 : 'organism or virus or viroid'
+      - [obo:BCO_0000087, $(sub)~iri] # BCO_0000087 : 'member of taxon'
       - p: $(pred)
         o:
           mapping: tgt_tax
@@ -23,29 +69,5 @@ mappings:
       - [o.csv~csv]
     s: null
     po:
-      - [http://www.w3.org/1999/02/22-rdf-syntax-ns#type, http://purl.obolibrary.org/obo/CARO_0010004~iri]
-      - [http://purl.obolibrary.org/obo/RO_0002350, $(obj)~iri]
-
-  inter:
-    sources:
-      - [p.csv~csv]
-    s: null
-    po:
-      - [http://www.w3.org/1999/02/22-rdf-syntax-ns#type, http://purl.obolibrary.org/obo/GO_0044419~iri]
-      - p: http://purl.obolibrary.org/obo/RO_0000057
-        o:
-          mapping: src_tax
-          condition:
-            function: equal
-            parameters:
-              - [str1, $(sub_id)]
-              - [str2, $(id)]
-
-      - p: http://purl.obolibrary.org/obo/RO_0000057
-        o:
-          mapping: tgt_tax
-          condition:
-            function: equal
-            parameters:
-              - [str1, $(obj_id)]
-              - [str2, $(id)]
+      - [rdf:type, obo:CARO_0001010~iri] # CARO_0001010 : 'organism or virus or viroid'
+      - [obo:BCO_0000087, $(obj)~iri]

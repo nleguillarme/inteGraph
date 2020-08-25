@@ -77,8 +77,11 @@ class RMLMappingEngine:
                 self.config.subject_column_name: "sub",
                 self.config.predicate_column_name: "pred",
                 self.config.object_column_name: "obj",
+                self.config.references_column_name: "references",
             }
         )
+
+        print(df)
 
         df["id"] = df.index
 
@@ -86,8 +89,7 @@ class RMLMappingEngine:
         df_obj["id"] = df.index
 
         df_pred = df.loc[:, ["pred"]]
-        df_pred["sub_id"] = df.index
-        df_pred["obj_id"] = df.index
+        df_pred["id"] = df.index
 
         df.to_csv(os.path.join(dst, "s.csv"), index=False)
         df_pred.to_csv(os.path.join(dst, "p.csv"), index=False)

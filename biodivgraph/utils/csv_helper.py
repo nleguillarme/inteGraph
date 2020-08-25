@@ -7,13 +7,13 @@ class ColumnNotFoundException(Exception):
     pass
 
 
-def read(file_path):
-    df = pd.read_csv(file_path, sep=",")
+def read(file_path, sep="\t"):
+    df = pd.read_csv(file_path, sep=sep)
     return df
 
 
-def write(df, file_path):
-    df.to_csv(file_path, sep=",", index=False)
+def write(df, file_path, sep="\t"):
+    df.to_csv(file_path, sep=sep, index=False)
 
 
 def read_csv_header(csv_file, delimiter=","):

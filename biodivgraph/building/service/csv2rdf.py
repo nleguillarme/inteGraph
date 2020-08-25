@@ -16,7 +16,7 @@ import multiprocessing
 from math import ceil
 
 from rdflib import Graph
-from rdflib.term import BNode
+from rdflib.term import BNode, URIRef
 
 
 class CSV2RDF(Service):
@@ -104,6 +104,7 @@ class CSV2RDF(Service):
             self.properties.triplifier_conf.subject_column_name,
             self.properties.triplifier_conf.predicate_column_name,
             self.properties.triplifier_conf.object_column_name,
+            self.properties.triplifier_conf.references_column_name,
         ]
         filepath = os.path.join(self.config.source_root_dir, self.properties.data_file)
         nb_records = get_nb_records_in_csv(filepath)
@@ -168,6 +169,10 @@ class CSV2RDF(Service):
                     new_s = BNode(value="{}_g{}_{}".format(self.get_id(), n, s))
                 if isinstance(o, BNode):
                     new_o = BNode(value="{}_g{}_{}".format(self.get_id(), n, o))
+                # if isinstance(s, URIRef):
+                #     new_s = URIRef(value="{}_g{}_{}".format(self.get_id(), n, s))
+                # if isinstance(o, URIRef):
+                #     new_o = URIRef(value="{}_g{}_{}".format(self.get_id(), n, o))
                 g.add((new_s, p, new_o))
             n += 1
         g.serialize(destination=f_out, format="nt")
