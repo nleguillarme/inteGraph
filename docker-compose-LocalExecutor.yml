@@ -60,7 +60,6 @@ services:
         depends_on:
             - postgres
             - nomer
-            - neo4j
         environment:
             - AIRFLOW__CORE__EXECUTOR=LocalExecutor
             # - AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL=5

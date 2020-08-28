@@ -1,6 +1,7 @@
 import logging
 from pynomer import NomerClient
 import json
+import pandas as pd
 from ..core import Linker
 from ...core import URIMapper, URIManager, TaxId
 
@@ -14,37 +15,38 @@ class TaxonomicEntityMapper:
         self.logger = logging.getLogger(__name__)
         self.uri_mapper = URIMapper()
         self.uri_manager = URIManager()
+        self.config = config
 
-        self.default_taxo = "GBIF"
-        self.src_taxo = (
-            config.source_taxonomy + ":" if "source_taxonomy" in config else None
+        self.default_taxonomy = "GBIF"
+        self.source_taxonomy = (
+            self.config.source_taxonomy if "source_taxonomy" in self.config else None
         )
-        self.tgt_taxo = config.target_taxonomy + ":"
 
-        if self.src_taxo and not self.uri_mapper.is_valid_db_prefix(self.src_taxo):
+        if self.source_taxonomy and not self.uri_mapper.is_valid_db_prefix(
+            self.source_taxonomy + ":"
+        ):
             raise ValueError(
-                "Fatal error : invalid source taxonomy {}".format(
-                    config.source_taxonomy
-                )
+                "Fatal error : invalid source taxonomy {}".format(self.source_taxonomy)
             )
-        if not self.uri_mapper.is_valid_db_prefix(self.tgt_taxo):
+
+        self.target_taxonomy = self.config.target_taxonomy
+        if not self.uri_mapper.is_valid_db_prefix(self.target_taxonomy + ":"):
             self.logger.error(
                 "Invalid target taxonomy {} : use default taxonomy {}".format(
-                    config.target_taxonomy, self.default_taxo
+                    self.target_taxonomy, self.default_taxonomy
                 )
             )
+            self.target_taxonomy = self.default_taxonomy
 
         self.cache_matcher = "globi-taxon-cache"
         self.enrich_matcher = "globi-enrich"
         self.scrubbing_matcher = "globi-correct"
-
-        # self.db_preferences = ["GBIF:", "NCBI:", "NCBITaxon:", "WORMS:", "ITIS:"]
+        self.wikidata_id_matcher = "wikidata-taxon-id-web"
 
         if config.run_on_localhost:
             self.client = NomerClient(base_url="http://localhost:5000/")
         else:
             self.client = NomerClient(base_url="http://nomer:5000/")
-        # self.client.append(id="GBIF:1", matcher=self.cache_matcher)
 
     def scrub_taxname(self, name):
         name = name.split(" sp. ")[0]
@@ -52,144 +54,162 @@ class TaxonomicEntityMapper:
         name = name.strip()
         return " ".join(name.split())
 
-    def get_preferred_uri(self, entries):
-        print(entries)
-        entry_map = {}
-        for entry in entries:
-            same_as_taxid = TaxId().init_from_string(entry[3])
-            uri = self.uri_manager.get_uri_from_taxid(same_as_taxid)
-            db_prefix = self.uri_mapper.get_db_prefix_from_uri(uri)
-            entry_map[db_prefix] = uri
-        if self.tgt_taxo in entry_map:
-            return entry_map[self.tgt_taxo]
-        else:
-            self.logger.info(
-                "No entry for target taxonomy {} : {}".format(self.tgt_taxo, entry_map)
-            )
-        # for db_prefix in self.db_preferences:
-        #     if db_prefix in entry_map:
-        #         return entry_map[db_prefix]
-        # return next(iter(entry_map.values()))
+    def parse_entry(self, entry):
+        if entry[2] == "NONE":
+            return False, None, None, None
+        taxonomy = entry[3].split(":")[0]
+        uri = entry[-1]
+        taxid = entry[3]
+        return True, taxid, taxonomy, uri
 
-    def get_uri_from_tsv_result(self, result):
+    def get_preferred_entry(self, entries):
+        for entry in entries:
+            matched, taxid, taxonomy, uri = self.parse_entry(entry)
+            if matched and taxonomy == self.target_taxonomy:
+                return True, taxid, taxonomy, uri
+        return False, taxid, taxonomy, uri
+
+    def parse_tsv_result(self, result):
         if not result:
             raise ValueError("Nomer result is {}".format(result))
         entries = result.split("\n")
         entries = [entry.strip(" ").rstrip("\t").split("\t") for entry in entries]
         if len(entries) < 1:
             raise ValueError("Nomer result is an empty string")
-        parsing = entries[0]
-        if len(parsing) < 3:
-            raise ValueError("Nomer result is an empty string")
-        if parsing[2] == "NONE":
-            return None
-        return self.get_preferred_uri(entries)
+        return self.get_preferred_entry(entries)
+
+    def get_taxid_from_name(self, name):
+        self.logger.info("Try to match name {}".format(name))
+        matched, taxid, taxonomy, uri = self.parse_tsv_result(
+            self.client.append(name=name, id="", matcher=self.cache_matcher)
+        )
+        if not matched:  # Look for taxid using external APIs
+            matched, taxid, taxonomy, uri = self.parse_tsv_result(
+                self.client.append(name=name, id="", matcher=self.enrich_matcher)
+            )
+        return matched, taxid, taxonomy, uri
 
     def map(self, name="", taxid=""):
-        if taxid != "" and self.src_taxo and self.src_taxo not in str(taxid):
-            taxid = self.src_taxo + str(taxid)
+        if (
+            taxid != ""
+            and self.source_taxonomy
+            and self.source_taxonomy not in str(taxid)
+        ):
+            taxid = self.source_taxonomy + ":{}".format(taxid)
         while True:
-            try:  # Look for taxid in local cache
-                self.logger.info("Match {} {}".format(name, taxid))
-                uri = self.get_uri_from_tsv_result(
-                    self.client.append(name=name, id=taxid, matcher=self.cache_matcher)
-                )
-                if uri == None:  # Look for taxid using external APIs
-                    uri = self.get_uri_from_tsv_result(
+            try:
+                self.logger.info("Match ({}, {})".format(name, taxid))
+
+                matched = False
+                if taxid != "":
+                    matched, _, _, uri = self.parse_tsv_result(
                         self.client.append(
-                            name=name, id=taxid, matcher=self.enrich_matcher
+                            name="", id=taxid, matcher=self.wikidata_id_matcher
                         )
                     )
-                self.logger.info("Matching result {} : {}".format(taxid, uri))
+
+                if not matched:
+                    matched, taxid, _, uri = self.get_taxid_from_name(name)
+
+                if not matched and taxid:
+                    matched, _, _, uri = self.parse_tsv_result(
+                        self.client.append(
+                            name="", id=taxid, matcher=self.wikidata_id_matcher
+                        )
+                    )
+
+                if not matched:
+                    self.logger.info(
+                        "No match for taxon ({}, {}) in target taxonomy {}".format(
+                            name, taxid, self.target_taxonomy
+                        )
+                    )
+                else:
+                    self.logger.info(
+                        "Matching result for taxon ({}, {}) in target taxonomy {} : {}".format(
+                            name, taxid, self.target_taxonomy, uri
+                        )
+                    )
             except ValueError as e:
                 self.logger.error(e)
                 continue
             break
         return {"type": "uri", "value": uri}
 
-    # def get_genus(self, taxon):
-    #     tokens = taxon.split()
-    #     if len(tokens) > 1:
-    #         return tokens[0]
-
-
-class TaxNameMapper(Linker):
-    def __init__(self, config, transforms):
-        Linker.__init__(self, transforms)
-        self.logger = logging.getLogger(__name__)
-        self.mapper = TaxonomicEntityMapper(config)
-
-    def get_uri(self, entity):
-        entity = self.apply_transforms(entity)
-        name = self.mapper.scrub_taxname(entity)
-        uri = self.mapper.map(name=name)
-        return uri
-
-
-class TaxIdMapper(Linker):
-    def __init__(self, config, transforms=None):
-        Linker.__init__(self, transforms)
-        self.logger = logging.getLogger(__name__)
-        self.mapper = TaxonomicEntityMapper(config)
-
-    def get_uri(self, entity):
-        entity = self.apply_transforms(entity)
-        uri = self.mapper.map(taxid=entity)
-        return uri
-
 
 class TaxonomicMapper:
     def __init__(self, config):
         self.logger = logging.getLogger(__name__)
-        factory = TaxonomicMapperFactory()
-        self.mappers = {}
-        for column_config in config.columns:
-            column_config.run_on_localhost = config.run_on_localhost
-            mapper = factory.get_mapper(column_config)
-            if mapper:
-                self.mappers[column_config.column_name] = mapper
+        self.config = config
+        for column_config in self.config.columns:
+            column_config.run_on_localhost = self.config.run_on_localhost
 
     def map(self, df):
         self.logger.info("Start mapping taxonomic entities")
-        for colname in self.mappers:
-            df[colname] = self.map_entities(df[colname], self.mappers[colname])
-        # sub = self.linkEntities(triples.iloc[:, 0], self.sub_linker)
-        # pred = self.linkEntities(triples.iloc[:, 1], self.pred_linker)
-        # obj = self.linkEntities(triples.iloc[:, 2], self.obj_linker)
-        # df = pd.concat([sub, pred, obj], axis=1, sort=False)
-        # df.columns = ["s", "p", "o"]
-        return df
+        for column_config in self.config.columns:
+            mapper = TaxonomicEntityMapper(column_config)
 
-    def map_entities(self, entities, mapper):
-        map = {}
-        unique = entities.unique()
+            colnames = []
+            if "id_column" not in column_config:
+                column_config.id_column = None
+            else:
+                colnames += [column_config.id_column]
+
+            if "name_column" not in column_config:
+                column_config.name_column = None
+            else:
+                colnames += [column_config.name_column]
+
+            map = self.map_entities(
+                entities=df[colnames],
+                id_column=column_config.id_column,
+                name_column=column_config.name_column,
+                mapper=mapper,
+            )
+
+            df[column_config.uri_column] = pd.Series(
+                list(map.values()), index=list(map.keys())
+            )
+
+        uri_colnames = [
+            column_config.uri_column for column_config in self.config.columns
+        ]
+        matched_df = df.dropna(subset=uri_colnames)
+        not_matched_df = df[df[uri_colnames].isnull().any(axis=1)]
+
+        return matched_df, not_matched_df
+
+    def map_entities(self, entities, id_column, name_column, mapper):
+        unique = entities.drop_duplicates()
         self.logger.info(
-            "Start mapping {}/{} unique entities using {}".format(
-                len(unique), entities.shape[0], mapper.__class__.__name__
+            "Start mapping {}/{} unique taxonomic entities".format(
+                unique.shape[0], entities.shape[0]
             )
         )
-        for entity in unique:
-            res = (
-                mapper.get_uri(entity)
-                if mapper != None
-                else {"type": "uri", "value": entity}
-            )
+        unique_entity_map = {}
+        for index, row in unique.iterrows():
+            name, taxid = self.get_name_and_taxid(row, id_column, name_column)
+            if taxid == "" and name == "":
+                raise ValueError
+
+            res = mapper.map(name=name, taxid=taxid)
             if res["type"] == "uri":
-                map[entity] = res["value"] if res["value"] else None
-        self.logger.debug("Mapper {} terminated".format(mapper.__class__.__name__))
-        return entities.replace(map)
+                unique_entity_map[(taxid, name)] = (
+                    res["value"] if res["value"] else None
+                )
 
+        entity_map = {}
+        for index, row in entities.iterrows():
+            name, taxid = self.get_name_and_taxid(row, id_column, name_column)
+            entity_map[index] = unique_entity_map[(taxid, name)]
 
-class TaxonomicMapperFactory:
-    def get_mapper(self, config):
-        # tranforms = TransformFactory().get_transforms(config)
-        if "column_type" not in config:
-            return None
-        if config.column_type == "name":
-            return TaxNameMapper(config)
-        elif config.column_type == "id":
-            return TaxIdMapper(config)
-        # elif os.path.exists(os.path.join(cfg["rootDir"], mapping)):
-        #     return DictBasedLinker(os.path.join(cfg["rootDir"], mapping), tranforms)
-        else:
-            raise ValueError(config.column_type)
+        return entity_map
+
+    def get_name_and_taxid(self, row, id_column, name_column):
+        taxid = row[id_column] if (id_column and not pd.isnull(row[id_column])) else ""
+        name = (
+            row[name_column]
+            if (name_column and not pd.isnull(row[name_column]))
+            else ""
+        )
+        return name, taxid

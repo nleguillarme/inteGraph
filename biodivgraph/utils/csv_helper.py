@@ -27,6 +27,7 @@ def read_csv_header(csv_file, delimiter=","):
 
 def get_nb_records_in_csv(csv_file, delimiter=",", with_header=True):
     csv.field_size_limit(sys.maxsize)
+    print(csv_file)
     with open(csv_file, newline="") as f:
         reader = csv.reader(f, delimiter=delimiter)
         rec_count = sum(1 for row in reader)
@@ -34,7 +35,9 @@ def get_nb_records_in_csv(csv_file, delimiter=",", with_header=True):
     return rec_count - 1 if with_header else rec_count
 
 
-def get_csv_file_reader(csv_file, columns, delimiter=",", chunksize=100000):
+def get_csv_file_reader(
+    csv_file, columns=None, dtype={}, delimiter=",", chunksize=100000
+):
     header = read_csv_header(csv_file, delimiter)
     if columns:
         for column in columns:

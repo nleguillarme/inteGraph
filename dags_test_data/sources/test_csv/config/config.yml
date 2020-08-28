@@ -1,0 +1,18 @@
+internal_id : test_csv_data
+properties : tab.properties
+
+# Dataset location : one of (file_location, http_endpoint, sparql_endpoint)
+#file_location : "file:///home/leguilln/workspace/BiodivGraph/dags_test_data/sources/test_csv/data/1.interactions_list_sample.csv"
+file_location : "file:///usr/local/airflow/dags/dags_test_data/sources/test_csv/data/1.interactions_list_sample.csv"
+data_format : "csv"
+
+
+# process : CSV2RDF
+
+num_processes : 3
+source_root_dir : "/home/leguilln/workspace/BiodivGraph/dags_test_data/sources/test_csv"
+
+# dataSource : Tabular
+# service : TabData2RDF
+# deleteTempFiles : False
+scheduleInterval : "@once"

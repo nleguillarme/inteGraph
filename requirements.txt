@@ -15,3 +15,6 @@ docker_py==1.10.6
 python_magic==0.4.18
 pynomer==0.1.1
 PyYAML==5.3.1
+requests-file==1.5.1
+pyunpack==0.2.1
+patool==1.12

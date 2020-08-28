@@ -29,6 +29,11 @@ def setup_logging(
         logging.basicConfig(level=default_level)
 
 
+def register_dag(dag):
+    logging.info("Register dag {}".format(dag.dag_id))
+    globals()[dag.dag_id] = dag
+
+
 default_args = {
     "owner": "leguilln",
     "depends_on_past": False,
@@ -81,10 +86,11 @@ sources = [
 
 for source in sources:
     source_dir = os.path.join(sources_dir, source)
-    config = read_config(os.path.join(source_dir, "config", "job.conf"))
+    config = read_config(os.path.join(source_dir, "config", "config.yml"))
     config.source_root_dir = source_dir
     config.run_on_localhost = False
     config.jars_location = "/usr/local/airflow/jars"
+    config.output_dir = os.path.join(config.source_root_dir, "output")
     if "internal_id" not in config:
         config.internal_id = source
     logging.info(config)
@@ -98,11 +104,9 @@ for source in sources:
     #     # cfg["graphURI"] = properties["graphURI"]
     #     # cfg["reportsDir"] = reports_dir
 
-    workflow = factory.get_worflow(cfg=config, default_args=default_args)
-    logging.info("Got {} DAGs".format(len(workflow)))
-    for dag_id in workflow:
-        logging.info("Register dag {}".format(dag_id))
-        globals()[dag_id] = workflow[dag_id]
+    register_dag(factory.get_extractor_dag(config, default_args))
+    register_dag(factory.get_transformer_dag(config, default_args))
+
 
 # Create publishing job
 # workflow = factory.get_worflow(cfg=load_job_cfg, default_args=default_args)
