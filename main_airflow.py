@@ -2,11 +2,12 @@ from airflow import DAG
 from airflow.models import Variable
 from airflow.operators.python_operator import PythonOperator
 from airflow.operators.subdag_operator import SubDagOperator
-from datetime import datetime, timedelta
+from airflow.operators.dummy_operator import DummyOperator
 import logging
 import os
 import json
 import glob
+from datetime import date, datetime, timedelta
 
 from biodivgraph.utils.config_helper import read_config
 from biodivgraph.building.pipelines import WorkflowFactory
@@ -34,6 +35,45 @@ def register_dag(dag):
     globals()[dag.dag_id] = dag
 
 
+def create_data_pipeline(config, default_args=None):
+
+    today = date.today()
+    dag_name = config.internal_id + "_" + today.strftime("%d%m%Y")
+
+    extractor_id, extractor = factory.get_extractor_dag(config, default_args, dag_name)
+    transformer_id, transformer = factory.get_transformer_dag(
+        config, default_args, dag_name
+    )
+    loader_id, loader = factory.get_loader_dag(config, default_args, dag_name)
+
+    schedule_interval = (
+        config.scheduleInterval
+        if "scheduleInterval" in config
+        else default_args["schedule_interval"]
+    )
+    dag = DAG(
+        dag_id=dag_name, default_args=default_args, schedule_interval=schedule_interval
+    )
+
+    start = DummyOperator(task_id="start", dag=dag)
+
+    extract = SubDagOperator(
+        task_id=extractor_id.split(".")[-1], subdag=extractor, dag=dag
+    )
+
+    transform = SubDagOperator(
+        task_id=transformer_id.split(".")[-1], subdag=transformer, dag=dag
+    )
+
+    load = SubDagOperator(task_id=loader_id.split(".")[-1], subdag=loader, dag=dag)
+
+    end = DummyOperator(task_id="end", dag=dag)
+
+    start >> extract >> transform >> load >> end
+
+    return dag
+
+
 default_args = {
     "owner": "leguilln",
     "depends_on_past": False,
@@ -49,29 +89,15 @@ default_args = {
 setup_logging()
 logger = logging.getLogger(__name__)
 
-# ROOT_DIR = "/usr/local/airflow/config/test"
-# SERVICE_DIR = "/usr/local/airflow/config/test/services"
-
 # Read scheduler config file to get properties file and jobs directory
 scheduler_cfg_file = "/usr/local/airflow/dags/dags_test_data/scheduler-config.yml"
 scheduler_cfg = read_config(scheduler_cfg_file)
 root_dir = os.path.dirname(scheduler_cfg_file)
 sources_dir = os.path.join(root_dir, scheduler_cfg.sources)
 
-
-# Create dump directory
-# dump_dir = os.path.join(root_dir, scheduler_cfg["dumpDirectory"])
-# if not os.path.exists(dump_dir):
-#     os.makedirs(dump_dir)
-
-# load_job_cfg = read_config(os.path.join(root_dir, scheduler_cfg["publishingJob"]))
-# load_job_cfg["dumpDirectory"] = dump_dir
-# load_job_cfg["rootDir"] = root_dir
-
-# Create reports directory
-# reports_dir = os.path.join(root_dir, "reports")
-# if not os.path.exists(reports_dir):
-#     os.makedirs(reports_dir)
+# Read loader config file
+loader_cfg_file = os.path.join(root_dir, scheduler_cfg.loader)
+loader_cfg = read_config(loader_cfg_file)
 
 # Create RDFization jobs
 logging.info("Collect integration jobs from {}".format(sources_dir))
@@ -87,6 +113,7 @@ sources = [
 for source in sources:
     source_dir = os.path.join(sources_dir, source)
     config = read_config(os.path.join(source_dir, "config", "config.yml"))
+    config.root_dir = root_dir
     config.source_root_dir = source_dir
     config.run_on_localhost = False
     config.jars_location = "/usr/local/airflow/jars"
@@ -95,22 +122,7 @@ for source in sources:
         config.internal_id = source
     logging.info(config)
 
-    # for cfg_file in glob.glob(os.path.join(service_dir, "*.yml")):
-    #     cfg = read_config(cfg_file)
-    #     logging.info(cfg)
-    #     cfg["rootDir"] = root_dir
-    #     cfg["serviceDir"] = service_dir
-    #     cfg["dumpDirectory"] = dump_dir
-    #     # cfg["graphURI"] = properties["graphURI"]
-    #     # cfg["reportsDir"] = reports_dir
-
-    register_dag(factory.get_extractor_dag(config, default_args))
-    register_dag(factory.get_transformer_dag(config, default_args))
-
-
-# Create publishing job
-# workflow = factory.get_worflow(cfg=load_job_cfg, default_args=default_args)
-# logging.info("Got {} DAGs".format(len(workflow)))
-# for dag_id in workflow:
-#     logging.info("Register dag {}".format(dag_id))
-#     globals()[dag_id] = workflow[dag_id]
+    # register_dag(factory.get_extractor_dag(config, default_args))
+    # register_dag(factory.get_transformer_dag(config, default_args))
+    # register_dag(factory.get_loader_dag(config + loader_cfg, default_args))
+    register_dag(create_data_pipeline(config + loader_cfg, default_args))

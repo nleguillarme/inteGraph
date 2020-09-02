@@ -22,7 +22,7 @@ from rdflib.term import BNode, URIRef
 
 class CSV2RDF(Transformer):
     def __init__(self, config):
-        Transformer.__init__(self, config.internal_id)
+        Transformer.__init__(self, "csv2rdf_transformer")
         self.logger = logging.getLogger(__name__)
         self.config = config
 
@@ -65,7 +65,7 @@ class CSV2RDF(Transformer):
             self.config.jars_location,
         )
 
-        self.logger.info("New CSV2RDF service with id {}".format(self.get_id()))
+        self.logger.info("New CSV2RDF Transformer with id {}".format(self.get_id()))
 
     def run(self):
         self.clean_output_dir()
@@ -86,9 +86,9 @@ class CSV2RDF(Transformer):
             self.triplify_chunk(f_in, f_out, wdir)
 
             triples_files.append(f_out)
-        f_output, f_graph = self.get_output_filenames()
+        f_output = self.get_output_filenames()
         self.merge_chunks(triples_files, f_output)
-        self.set_graph_dst(f_graph)
+        # self.set_graph_dst(f_graph)
 
     def clean_output_dir(self, **kwargs):
         clean_dir(self.config.output_chunks_dir)
@@ -114,7 +114,7 @@ class CSV2RDF(Transformer):
                 csv_file=filepath,
                 columns=columns,
                 dtype=dtype,
-                delimiter=self.properties["delimiter"],
+                delimiter=self.properties.delimiter,
                 chunksize=ceil(nb_records / self.config.num_processes),
             )
         else:
@@ -127,7 +127,7 @@ class CSV2RDF(Transformer):
         chunk_count = 0
         for df in chunk_reader:
             chunk_filename = self.get_chunk_filename(chunk_count)
-            write(df, chunk_filename)
+            write(df, chunk_filename, sep=self.properties.delimiter)
             chunk_count += 1
         if chunk_count != self.get_nb_chunks():
             raise AssertionError(
@@ -140,27 +140,27 @@ class CSV2RDF(Transformer):
         os.rename(filepath, os.path.join(processed_dir, basename + ext))
 
     def map_taxonomic_entities(self, f_in, f_out, **kwargs):
-        df = read(f_in)
+        df = read(f_in, sep=self.properties.delimiter)
         matched_df, not_matched_df = self.taxonomic_mapper.map(df)
         basename, ext = get_basename_and_extension(f_in)
         invalid_data_filepath = os.path.join(
             self.config.output_chunks_dir, basename + "_invalid" + ext
         )
-        write(matched_df, f_out)
+        write(matched_df, f_out, sep=self.properties.delimiter)
         if not_matched_df.shape[0]:
-            write(not_matched_df, invalid_data_filepath)
+            write(not_matched_df, invalid_data_filepath, sep=self.properties.delimiter)
 
     def map_interactions(self, f_in, f_out, **kwargs):
-        df = read(f_in)
+        df = read(f_in, sep=self.properties.delimiter)
         df = self.interaction_mapper.map(df)
-        write(df, f_out)
+        write(df, f_out, sep=self.properties.delimiter)
 
     # Validate data and generate RDF triples from each observation
     def triplify_chunk(self, f_in, f_out, wdir, **kwargs):
         # TODO : consider reusing triplifier from ontology-data-pipeline when
         # interactions will be supported (see https://github.com/biocodellc/ontology-data-pipeline/issues/60)
         # In that case, entity linking will have to be performed as a previous step (outside the pipeline preferably)
-        df = read(f_in)
+        df = read(f_in, sep=self.properties.delimiter)
         self.triplifier.run_mapping(df, wdir, f_out)
         move_file_to_dir(
             os.path.join(wdir, os.path.basename(f_out)), self.config.output_triples_dir
@@ -187,11 +187,6 @@ class CSV2RDF(Transformer):
                 g.add((new_s, p, new_o))
             n += 1
         g.serialize(destination=f_out, format="nt")
-
-    def set_graph_dst(self, f_name, **kwargs):
-        with open(f_name, "wt") as f:
-            f.write(self.get_id())
-            f.close()
 
     def get_extracted_data_dir(self):
         return self.config.extracted_data_dir
@@ -223,7 +218,7 @@ class CSV2RDF(Transformer):
 
     def get_output_filenames(self):
         basename = os.path.join(self.config.output_unreasoned_dir, self.get_id())
-        return basename + self.config.rdf_extension, basename + ".graph"
+        return basename + self.config.rdf_extension  # , basename + ".graph"
 
     def get_nb_chunks(self):
         return self.config.num_processes
@@ -248,24 +243,10 @@ class CSV2RDF(Transformer):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="csv2rdf pipeline command line interface."
+        description="csv2rdf transformer command line interface."
     )
 
     parser.add_argument("cfg_file", help="YAML configuration file.")
-    parser.add_argument(
-        "--log_file",
-        help="log all output to a log.txt file in the output_dir. default is to log output to the console",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-v", "--verbose", help="verbose logging output", action="store_true"
-    )
-    parser.add_argument(
-        "--num_processes",
-        help="number of process to use for parallel processing of data. Defaults to cpu_count of the machine",
-        type=int,
-        default=multiprocessing.cpu_count(),
-    )
     args = parser.parse_args()
 
     config = read_config(args.cfg_file)

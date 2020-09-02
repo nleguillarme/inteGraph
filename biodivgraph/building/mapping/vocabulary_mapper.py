@@ -1,16 +1,13 @@
 import logging
 import yaml
-from ..core import Linker
 
 
-class VocabularyBasedEntityMapper(Linker):
-    def __init__(self, mapping, transforms=None):
-        Linker.__init__(self, transforms)
+class VocabularyBasedEntityMapper:
+    def __init__(self, mapping):
         self.logger = logging.getLogger(__name__)
         self.mapping = mapping
 
     def get_uri(self, entity):
-        entity = self.apply_transforms(entity)
         if entity in self.mapping:
             return {"type": "uri", "value": self.mapping[entity]}
         else:

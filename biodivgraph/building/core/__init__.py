@@ -1,7 +1,6 @@
 from .job import Job
-from .linker import Linker
-from .transform import TransformFactory
 from .transformer import Transformer
 from .extractor import Extractor
+from .loader import Loader
 
-__all__ = ["Job", "Linker", "TransformFactory", "Transformer", "Extractor"]
+__all__ = ["Job", "Loader", "Transformer", "Extractor"]

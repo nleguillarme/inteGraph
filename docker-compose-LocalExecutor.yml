@@ -20,18 +20,51 @@ services:
     #         - ~/.neo4j/logs:/logs
     #         - ./config/test/dumps:/dumps
 
-    # virtuoso:
-    #     #image: openlink/virtuoso-opensource-7:latest
-    #     image: tenforce/virtuoso:latest
-    #     user: 1001:1001
-    #     environment:
-    #         - DBA_PASSWORD=dba
+    virtuoso:
+        #image: openlink/virtuoso-opensource-7:latest
+        image: tenforce/virtuoso:1.3.1-virtuoso7.2.2
+        # user: 1001:1001
+        environment:
+          SPARQL_UPDATE: "true"
+          DEFAULT_GRAPH: "http://www.example.com/my-graph"
+          VIRT_Parameters_DirsAllowed: "/data/dumps"
+        volumes:
+          - ~/.virtuoso:/data
+          - ./dags_test_data/shared_dir:/data/dumps
+        ports:
+          - "8890:8890"
+        # image: tenforce/virtuoso:latest
+        # # user: 1001:1001
+        # environment:
+        #     - DBA_PASSWORD=dba
+        # ports:
+        #     - "1111:1111"
+        #     - "8890:8890"
+        # volumes:
+        #     - ~/.virtuoso:/data
+        #     - ./dags_test_data/shared_dir:/opt
+
+    # graphdb:
+    #     image: ontotext/graphdb:9.3.3-free
     #     ports:
-    #         - "1111:1111"
-    #         - "8890:8890"
+    #         - "7200:7200"
     #     volumes:
-    #         - ~/.virtuoso:/database
-    #         - ./config/test/dumps:/data
+    #         - .graphdb/:/opt/graphdb/home/data/
+    #         - ./dags_test_data/:/opt/graphdb/home/data/
+
+    # anzograph:
+    #     build:
+    #           context: .
+    #           dockerfile: Dockerfile.anzograph
+    #           args:
+    #             - USER_UID=1001
+    #             - USER_GID=1001
+    #     image: cambridgesemantics/anzograph:latest
+    #     ports:
+    #         - "8081:8080"
+    #         - "8443:8443"virtuoso
+    #     volumes:
+    #         - ./dags_test_data/:/opt/shared-directory
 
     nomer:
         build: https://github.com/nleguillarme/nomer-docker.git
@@ -60,6 +93,7 @@ services:
         depends_on:
             - postgres
             - nomer
+            - virtuoso
         environment:
             - AIRFLOW__CORE__EXECUTOR=LocalExecutor
             # - AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL=5

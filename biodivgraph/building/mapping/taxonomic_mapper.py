@@ -2,7 +2,6 @@ import logging
 from pynomer import NomerClient
 import json
 import pandas as pd
-from ..core import Linker
 from ...core import URIMapper, URIManager, TaxId
 
 """
@@ -146,6 +145,7 @@ class TaxonomicMapper:
 
     def map(self, df):
         self.logger.info("Start mapping taxonomic entities")
+
         for column_config in self.config.columns:
             mapper = TaxonomicEntityMapper(column_config)
 
@@ -159,6 +159,8 @@ class TaxonomicMapper:
                 column_config.name_column = None
             else:
                 colnames += [column_config.name_column]
+
+            self.logger.info(df, colnames)
 
             map = self.map_entities(
                 entities=df[colnames],

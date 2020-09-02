@@ -1,6 +1,6 @@
 prefixes:
-  data_item: "http://test_csv_data.com/data_item"
-  interaction: "http://test_csv_data.com/interaction"
+  data_item: "http://test_tsv_data.com/data_item"
+  interaction: "http://test_tsv_data.com/interaction"
   obo: "http://purl.obolibrary.org/obo/"
   dwc: "http://rs.tdwg.org/dwc/terms/"
   rdf: "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -8,7 +8,9 @@ prefixes:
 mappings:
   data_item:
     sources:
-      - [s.csv~csv]
+      - access: s.tsv
+        referenceFormulation: csv
+      #- [s.tsv~csv]
     s: null #data_item:$(id)
     po:
       - [rdf:type, obo:IAO_0000027~iri] # IAO_0000027 : 'data item'
@@ -27,7 +29,8 @@ mappings:
 
   interactions:
     sources:
-      - [p.csv~csv]
+      - access: p.tsv
+        referenceFormulation: csv
     s: null #interaction:$(id)
     po:
       - [rdf:type, obo:GO_0044419~iri] # GO_0044419 : 'interspecies interaction between organisms'
@@ -50,7 +53,8 @@ mappings:
 
   src_organism:
     sources:
-      - [s.csv~csv]
+      - access: s.tsv
+        referenceFormulation: csv
     s: null
     po:
       - [rdf:type, obo:CARO_0001010~iri] # CARO_0001010 : 'organism or virus or viroid'
@@ -74,7 +78,8 @@ mappings:
 
   tgt_organism:
     sources:
-      - [o.csv~csv]
+      - access: o.tsv
+        referenceFormulation: csv
     s: null
     po:
       - [rdf:type, obo:CARO_0001010~iri] # CARO_0001010 : 'organism or virus or viroid'
@@ -90,7 +95,8 @@ mappings:
 
   src_organism:
     sources:
-      - [s.csv~csv]
+      - access: s.tsv
+        referenceFormulation: csv
     s: null
     po:
       - [rdf:type, obo:CARO_0001010~iri] # CARO_0001010 : 'organism or virus or viroid'
@@ -106,7 +112,8 @@ mappings:
 
   taxon:
     sources:
-      - [taxon.csv~csv]
+      - access: taxon.tsv
+        referenceFormulation: csv
     s: $(iri)
     po:
       - p: dwc:scientificName

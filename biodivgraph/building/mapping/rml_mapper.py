@@ -70,6 +70,7 @@ class RMLMappingEngine:
             raise FileNotFoundError(self.path_to_rml_rules)
 
     def df_to_csv(self, df, dst):
+        sep = ","
         os.makedirs(dst, exist_ok=True)
 
         df = df.rename(
@@ -89,9 +90,9 @@ class RMLMappingEngine:
         df_pred = df.loc[:, ["pred"]]
         df_pred["id"] = df.index
 
-        df.to_csv(os.path.join(dst, "s.csv"), index=False)
-        df_pred.to_csv(os.path.join(dst, "p.csv"), index=False)
-        df_obj.to_csv(os.path.join(dst, "o.csv"), index=False)
+        df.to_csv(os.path.join(dst, "s.tsv"), index=False, sep=sep)
+        df_pred.to_csv(os.path.join(dst, "p.tsv"), index=False, sep=sep)
+        df_obj.to_csv(os.path.join(dst, "o.tsv"), index=False, sep=sep)
 
         df_sub_taxon = df[
             [
@@ -124,4 +125,4 @@ class RMLMappingEngine:
             subset="iri"
         )
 
-        df_taxon.to_csv(os.path.join(dst, "taxon.csv"), index=False)
+        df_taxon.to_csv(os.path.join(dst, "taxon.tsv"), index=False, sep=sep)

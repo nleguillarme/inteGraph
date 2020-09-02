@@ -14,15 +14,12 @@ from biodivgraph.building.extractors import FileExtractor
 class FileExtractorDAG(DAGTemplate):
     def __init__(self, config, parent_dag_name=None):
         extractor = FileExtractor(config)
-        dag_id = (
-            parent_dag_name + "." if parent_dag_name else ""
-        ) + "file_extractor_{}".format(extractor.get_id())
+        dag_id = (parent_dag_name + "." if parent_dag_name else "") + "{}".format(
+            extractor.get_id()
+        )
         DAGTemplate.__init__(self, dag_id)
         self.logger = logging.getLogger(__name__)
         self.extractor = extractor
-
-    def end(self, **kwargs):
-        self.logger.info("End execution of pipeline {}".format(self.get_dag_id()))
 
     def branch(self, unpack_task, end_task, **kwargs):
         if self.extractor.is_txt_file():
