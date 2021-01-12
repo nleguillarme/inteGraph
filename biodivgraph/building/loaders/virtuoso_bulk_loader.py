@@ -33,8 +33,8 @@ class VirtuosoBulkLoader(Loader):
             self.config.remote_dir, self.config.internal_id
         )
 
+        self.jar_location = os.path.join(os.getcwd(), self.config.jars_location)
         self.script_name = "bulk_load_{}.sh".format(self.config.internal_id)
-
         self.logger.info("New Virtuoso Bulk Loader with id {}".format(self.get_id()))
 
     def run(self):
@@ -43,8 +43,8 @@ class VirtuosoBulkLoader(Loader):
         self.create_loader_script()
         self.run_loader_script()
 
-    def get_input_filename(self):
-        dir = self.config.local_data_dir
+    def get_input_filename(self, dir):
+        # dir = self.config.local_data_dir
         files = [
             f
             for f in listdir(dir)
@@ -53,7 +53,7 @@ class VirtuosoBulkLoader(Loader):
             and f[0] != "."
         ]
         if len(files) == 1:
-            return os.path.join(self.config.local_data_dir, files[0])
+            return os.path.join(dir, files[0])
         else:
             return None
 
@@ -66,9 +66,17 @@ class VirtuosoBulkLoader(Loader):
     #         clean_dir(processed_dir)
 
     def split_data(self, **kwargs):
-        filepath = self.get_input_filename()
+        filepath = self.get_input_filename(self.config.local_data_dir)
         if filepath:
             copy_file_to_dir(filepath, self.config.shared_dir_for_source)
+            cmd = "cd {}; java -jar {}/rdfsplit-0.1.0-SNAPSHOT-standalone.jar -f *.nt".format(
+                self.config.shared_dir_for_source, self.jar_location
+            )
+            self.logger.info("Run command {}".format(cmd))
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=None, shell=True)
+            exit_code = p.wait()
+            result = p.communicate()[0].decode("utf8")
+
             # nb_chunks = ceil(self.config.num_processes / 2.5)
             # file_size = os.path.getsize(filepath)
             # chunk_size = ceil((1.0 * file_size) / nb_chunks)
@@ -80,6 +88,8 @@ class VirtuosoBulkLoader(Loader):
             # fs.split()
 
     def create_loader_script(self, **kwargs):
+        # filepath = self.get_input_filename(self.config.shared_dir_for_source)
+        # isql_cmd = self.get_split_file_cmd(filepath) + "\n"
         isql_cmd = self.get_register_cmd() + "\n"
         nb_processes = ceil(self.config.num_processes / 2.5)
         isql_cmd += self.get_run_multiple_loaders_cmd(nb_processes)
@@ -122,7 +132,7 @@ class VirtuosoBulkLoader(Loader):
 
     def get_register_cmd(self):
         return self.get_isql_cmd(
-            "ld_dir ('{}', '*.nt', '{}');".format(
+            "ld_dir ('{}', '*.nq', '{}');".format(
                 self.remote_shared_dir_for_source, self.config.graph_uri
             )
         )
@@ -138,6 +148,24 @@ class VirtuosoBulkLoader(Loader):
         isql_cmd += "wait\n"
         isql_cmd += self.get_isql_cmd("checkpoint;") + "\n"
         return isql_cmd
+
+    # def get_split_file_cmd(self, f_in):
+    #     basename, extension = get_basename_and_extension(f_in)
+    #     remote_f_in_path = os.path.join(
+    #         self.remote_shared_dir_for_source, basename + extension
+    #     )
+    #     f_out_name_tmpl = os.path.join(
+    #         self.remote_shared_dir_for_source,
+    #         "{}%06d.ttl".format(basename),  # , extension)
+    #     )
+    #     with open(
+    #         os.path.join(os.path.dirname(__file__), "virtuoso_split_script.txt"), "r"
+    #     ) as f:
+    #         cmd = f.read()
+    #         cmd += "\n" + "DB.DBA.RDFXML_FILE_SPLIT ('{}', '{}', 0, '{}', 10);".format(
+    #             remote_f_in_path, self.config.graph_uri, f_out_name_tmpl
+    #         )
+    #     return self.get_isql_cmd(cmd)
 
     def get_local_data_dir(self):
         return self.config.local_data_dir
@@ -157,6 +185,8 @@ def main():
 
     src_config = read_config(args.src_config)
     src_config.output_dir = os.path.join(src_config.source_root_dir, "output")
+    src_config.root_dir = "/home/leguilln/workspace/BiodivGraph/dags_test_data"
+    src_config.jars_location = "jars"
     loader_config = read_config(args.loader_config)
 
     process = VirtuosoBulkLoader(src_config + loader_config)

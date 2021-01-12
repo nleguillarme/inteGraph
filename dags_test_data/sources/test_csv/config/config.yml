@@ -1,4 +1,4 @@
-internal_id : test_csv_data
+internal_id : hedde.interactions
 properties : tab.properties
 
 # Dataset location : one of (file_location, http_endpoint, sparql_endpoint)
@@ -11,4 +11,4 @@ source_root_dir : "/home/leguilln/workspace/BiodivGraph/dags_test_data/sources/t
 
 scheduleInterval : "@once"
 
-graph_uri : https://leca.osug.fr/biodivgraph/test_csv_data
+graph_uri : https://leca.osug.fr/biodivgraph/hedde

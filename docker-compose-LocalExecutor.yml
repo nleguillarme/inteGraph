@@ -20,29 +20,31 @@ services:
     #         - ~/.neo4j/logs:/logs
     #         - ./config/test/dumps:/dumps
 
-    virtuoso:
-        #image: openlink/virtuoso-opensource-7:latest
-        image: tenforce/virtuoso:1.3.1-virtuoso7.2.2
-        # user: 1001:1001
-        environment:
-          SPARQL_UPDATE: "true"
-          DEFAULT_GRAPH: "http://www.example.com/my-graph"
-          VIRT_Parameters_DirsAllowed: "/data/dumps"
-        volumes:
-          - ~/.virtuoso:/data
-          - ./dags_test_data/shared_dir:/data/dumps
-        ports:
-          - "8890:8890"
-        # image: tenforce/virtuoso:latest
-        # # user: 1001:1001
-        # environment:
-        #     - DBA_PASSWORD=dba
-        # ports:
-        #     - "1111:1111"
-        #     - "8890:8890"
-        # volumes:
-        #     - ~/.virtuoso:/data
-        #     - ./dags_test_data/shared_dir:/opt
+    # virtuoso:
+    #     image: tenforce/virtuoso:1.3.1-virtuoso7.2.2
+    #     environment:
+    #       SPARQL_UPDATE: "true"
+    #       DEFAULT_GRAPH: "http://www.example.com/my-graph"
+    #       VIRT_Parameters_DirsAllowed: "/data/dumps"
+    #     volumes:
+    #       - ~/.virtuoso:/data
+    #       - ./dags_test_data/shared_dir:/data/dumps
+    #     ports:
+    #       - "8890:8890"
+
+    rdfox:
+      image: oxfordsemantic/rdfox
+      volumes:
+        - ./RDFox-data/RDFox.lic:/opt/RDFox/RDFox.lic
+        - ./rdfox-server-directory:/home/rdfox/.RDFox
+        - ./RDFox-data:/data
+      # environment:
+      #   RDFOX_ROLE: admin
+      #   RDFOX_PASSWORD: leca2019
+      cap_drop:
+        - ALL
+      ports:
+        - "12110:12110"
 
     # graphdb:
     #     image: ontotext/graphdb:9.3.3-free
@@ -66,13 +68,19 @@ services:
     #     volumes:
     #         - ./dags_test_data/:/opt/shared-directory
 
-    nomer:
-        build: https://github.com/nleguillarme/nomer-docker.git
-        image: nomer-docker
-        ports:
-            - "5000:5000"
-        volumes:
-            - .tmp/.nomer:/.nomer
+    # yarrrmlmapper:
+    #     build: https://github.com/RMLio/yarrrml-rmlmapper-docker.git#:docker
+    #     image: yarrrmlmapper
+    #     volumes:
+
+
+    # nomer:
+    #     build: https://github.com/nleguillarme/nomer-docker.git
+    #     image: nomer-docker
+    #     ports:
+    #         - "5000:5000"
+    #     volumes:
+    #         - .tmp/.nomer:/.nomer
 
     postgres:
         image: postgres:9.6
@@ -89,23 +97,20 @@ services:
             - DOCKER_UID=1001
             - DOCKER_GID=999
         image: custom-airflow
-        restart: always
+        #restart: always
         depends_on:
             - postgres
-            - nomer
-            - virtuoso
+            #- nomer
+            - rdfox
         environment:
             - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-            # - AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL=5
             - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True
             - AIRFLOW__SCHEDULER__CATCHUP_BY_DEFAULT=False
             - AIRFLOW__CORE__LOAD_EXAMPLES=False
             - AIRFLOW__WEBSERVER__DAG_ORIENTATION=TB
+            - EXECUTOR=Local
         volumes:
-            # - ./dags:/usr/local/airflow/dags
-            # - ./config:/usr/local/airflow/config
             - .:/usr/local/airflow/dags
-            - .tmp/:/usr/local/airflow/.tmp
             - ./jars:/usr/local/airflow/jars
             - /var/run/docker.sock:/var/run/docker.sock
             - /usr/bin/docker:/usr/bin/docker

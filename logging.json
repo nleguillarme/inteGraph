@@ -38,14 +38,14 @@
 
   "loggers": {
     "my_module": {
-      "level": "ERROR",
+      "level": "INFO",
       "handlers": ["console"],
       "propagate": false
     }
   },
 
   "root": {
-    "level": "DEBUG",
+    "level": "INFO",
     "handlers": ["console", "info_file_handler", "error_file_handler"]
   }
 }

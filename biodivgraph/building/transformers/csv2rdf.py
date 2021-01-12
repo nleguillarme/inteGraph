@@ -88,7 +88,6 @@ class CSV2RDF(Transformer):
             triples_files.append(f_out)
         f_output = self.get_output_filenames()
         self.merge_chunks(triples_files, f_output)
-        # self.set_graph_dst(f_graph)
 
     def clean_output_dir(self, **kwargs):
         clean_dir(self.config.output_chunks_dir)
@@ -181,9 +180,13 @@ class CSV2RDF(Transformer):
                 new_s = s
                 new_o = o
                 if isinstance(s, BNode):
-                    new_s = BNode(value="{}_g{}_{}".format(self.get_id(), n, s))
+                    new_s = BNode(
+                        value="{}_{}_{}".format(self.config.internal_id, n, s)
+                    )
                 if isinstance(o, BNode):
-                    new_o = BNode(value="{}_g{}_{}".format(self.get_id(), n, o))
+                    new_o = BNode(
+                        value="{}_{}_{}".format(self.config.internal_id, n, o)
+                    )
                 g.add((new_s, p, new_o))
             n += 1
         g.serialize(destination=f_out, format="nt")
@@ -194,13 +197,15 @@ class CSV2RDF(Transformer):
     def get_chunk_filename(self, num_chunk):
         return os.path.join(
             self.config.output_chunks_dir,
-            self.get_id() + "_{}".format(num_chunk) + self.properties.data_extension,
+            self.config.internal_id
+            + "_{}".format(num_chunk)
+            + self.properties.data_extension,
         )
 
     def get_mapped_chunk_filename(self, num_chunk):
         return os.path.join(
             self.config.output_chunks_dir,
-            self.get_id()
+            self.config.internal_id
             + "_{}_mapped".format(num_chunk)
             + self.properties.data_extension,
         )
@@ -208,16 +213,21 @@ class CSV2RDF(Transformer):
     def get_triples_filename(self, num_chunk):
         return os.path.join(
             self.config.output_triples_dir,
-            self.get_id() + "_{}".format(num_chunk) + self.config.rdf_extension,
+            self.config.internal_id
+            + "_{}".format(num_chunk)
+            + self.config.rdf_extension,
         )
 
     def get_onto_mapping_working_dir_template(self, num_chunk):
         return os.path.join(
-            self.config.output_triples_dir, self.get_id() + "_{}".format(num_chunk)
+            self.config.output_triples_dir,
+            self.config.internal_id + "_{}".format(num_chunk),
         )
 
     def get_output_filenames(self):
-        basename = os.path.join(self.config.output_unreasoned_dir, self.get_id())
+        basename = os.path.join(
+            self.config.output_unreasoned_dir, self.config.internal_id
+        )
         return basename + self.config.rdf_extension  # , basename + ".graph"
 
     def get_nb_chunks(self):

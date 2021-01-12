@@ -10,7 +10,7 @@ mappings:
     sources:
       - access: s.tsv
         referenceFormulation: csv
-      #- [s.tsv~csv]
+        delimiter: "\t"
     s: null #data_item:$(id)
     po:
       - [rdf:type, obo:IAO_0000027~iri] # IAO_0000027 : 'data item'
@@ -31,6 +31,7 @@ mappings:
     sources:
       - access: p.tsv
         referenceFormulation: csv
+        delimiter: "\t"
     s: null #interaction:$(id)
     po:
       - [rdf:type, obo:GO_0044419~iri] # GO_0044419 : 'interspecies interaction between organisms'
@@ -55,6 +56,7 @@ mappings:
     sources:
       - access: s.tsv
         referenceFormulation: csv
+        delimiter: "\t"
     s: null
     po:
       - [rdf:type, obo:CARO_0001010~iri] # CARO_0001010 : 'organism or virus or viroid'
@@ -80,6 +82,7 @@ mappings:
     sources:
       - access: o.tsv
         referenceFormulation: csv
+        delimiter: "\t"
     s: null
     po:
       - [rdf:type, obo:CARO_0001010~iri] # CARO_0001010 : 'organism or virus or viroid'
@@ -97,6 +100,7 @@ mappings:
     sources:
       - access: s.tsv
         referenceFormulation: csv
+        delimiter: "\t"
     s: null
     po:
       - [rdf:type, obo:CARO_0001010~iri] # CARO_0001010 : 'organism or virus or viroid'
@@ -114,6 +118,7 @@ mappings:
     sources:
       - access: taxon.tsv
         referenceFormulation: csv
+        delimiter: "\t"
     s: $(iri)
     po:
       - p: dwc:scientificName

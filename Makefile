@@ -26,6 +26,9 @@ sequential:
 
 local:
 	#	docker build --build-arg DOCKER_UID=`id -u` --rm -t custom-airflow .
+		docker build https://github.com/RMLio/yarrrml-parser.git -t yarrrml-parser:latest
+		docker build https://github.com/RMLio/rmlmapper-java.git -t rmlmapper:latest
+		docker build https://github.com/nleguillarme/pynomer.git -t pynomer:latest
 		docker-compose -f docker-compose-LocalExecutor.yml up -d
 
 .PHONY: init test airflow main_dag sequential local

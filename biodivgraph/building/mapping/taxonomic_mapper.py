@@ -1,8 +1,9 @@
 import logging
-from pynomer import NomerClient
-import json
 import pandas as pd
 from ...core import URIMapper, URIManager, TaxId
+import os
+import docker
+from docker.errors import NotFound, APIError
 
 """
 https://github.com/globalbioticinteractions/globalbioticinteractions/wiki/Taxonomy-Matching
@@ -42,10 +43,15 @@ class TaxonomicEntityMapper:
         self.scrubbing_matcher = "globi-correct"
         self.wikidata_id_matcher = "wikidata-taxon-id-web"
 
-        if config.run_on_localhost:
-            self.client = NomerClient(base_url="http://localhost:5000/")
-        else:
-            self.client = NomerClient(base_url="http://nomer:5000/")
+        self.client = docker.from_env()
+        self.pynomer_image = self.client.images.get("pynomer:latest")
+
+    def run_pynomer_append(self, name, id, matcher):
+        volume = {os.path.abspath(".nomer"): {"bind": "/.nomer", "mode": "rw"}}
+        append_command = f'pynomer append "{id}\t{name}" -m {matcher} -e -o tsv'
+        return self.client.containers.run(
+            self.pynomer_image, append_command, volumes=volume, remove=False
+        )
 
     def scrub_taxname(self, name):
         name = name.split(" sp. ")[0]
@@ -71,8 +77,10 @@ class TaxonomicEntityMapper:
     def parse_tsv_result(self, result):
         if not result:
             raise ValueError("Nomer result is {}".format(result))
-        entries = result.split("\n")
+        result_str = result.decode("utf-8")
+        entries = result_str.split("\n")
         entries = [entry.strip(" ").rstrip("\t").split("\t") for entry in entries]
+        entries = [entry for entry in entries if len(entry) > 1]
         if len(entries) < 1:
             raise ValueError("Nomer result is an empty string")
         return self.get_preferred_entry(entries)
@@ -80,11 +88,11 @@ class TaxonomicEntityMapper:
     def get_taxid_from_name(self, name):
         self.logger.info("Try to match name {}".format(name))
         matched, taxid, taxonomy, uri = self.parse_tsv_result(
-            self.client.append(name=name, id="", matcher=self.cache_matcher)
+            self.run_pynomer_append(name=name, id="", matcher=self.cache_matcher)
         )
         if not matched:  # Look for taxid using external APIs
             matched, taxid, taxonomy, uri = self.parse_tsv_result(
-                self.client.append(name=name, id="", matcher=self.enrich_matcher)
+                self.run_pynomer_append(name=name, id="", matcher=self.enrich_matcher)
             )
         return matched, taxid, taxonomy, uri
 
@@ -102,7 +110,7 @@ class TaxonomicEntityMapper:
                 matched = False
                 if taxid != "":
                     matched, _, _, uri = self.parse_tsv_result(
-                        self.client.append(
+                        self.run_pynomer_append(
                             name="", id=taxid, matcher=self.wikidata_id_matcher
                         )
                     )
@@ -112,7 +120,7 @@ class TaxonomicEntityMapper:
 
                 if not matched and taxid:
                     matched, _, _, uri = self.parse_tsv_result(
-                        self.client.append(
+                        self.run_pynomer_append(
                             name="", id=taxid, matcher=self.wikidata_id_matcher
                         )
                     )
@@ -140,8 +148,8 @@ class TaxonomicMapper:
     def __init__(self, config):
         self.logger = logging.getLogger(__name__)
         self.config = config
-        for column_config in self.config.columns:
-            column_config.run_on_localhost = self.config.run_on_localhost
+        # for column_config in self.config.columns:
+        #     column_config.run_on_localhost = self.config.run_on_localhost
 
     def map(self, df):
         self.logger.info("Start mapping taxonomic entities")
@@ -159,8 +167,6 @@ class TaxonomicMapper:
                 column_config.name_column = None
             else:
                 colnames += [column_config.name_column]
-
-            self.logger.info(df, colnames)
 
             map = self.map_entities(
                 entities=df[colnames],
