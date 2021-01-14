@@ -29,6 +29,8 @@ local:
 		docker build https://github.com/RMLio/yarrrml-parser.git -t yarrrml-parser:latest
 		docker build https://github.com/RMLio/rmlmapper-java.git -t rmlmapper:latest
 		docker build https://github.com/nleguillarme/pynomer.git -t pynomer:latest
+		#docker build https://github.com/stain/rdfsplit.git -t rdfsplit:latest
+		#Fork rdfsplit and change Dockerfile, build from our fork
 		docker-compose -f docker-compose-LocalExecutor.yml up -d
 
 .PHONY: init test airflow main_dag sequential local
