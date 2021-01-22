@@ -1,6 +1,0 @@
-service : BulkLoader
-remoteDirectory : /data
-containerName : vos_base_db
-userName : dba
-userPassword : leca2019
-cores : 12

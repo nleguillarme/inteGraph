@@ -15,10 +15,7 @@ from biodivgraph.building.transformers import CSV2RDF
 class CSV2RDFDAG(DAGTemplate):
     def __init__(self, config, parent_dag_name=None):
         transformer = CSV2RDF(config)
-        dag_id = (parent_dag_name + "." if parent_dag_name else "") + "{}".format(
-            transformer.get_id()
-        )
-        DAGTemplate.__init__(self, dag_id)
+        DAGTemplate.__init__(self, transformer.get_id(), parent_dag_name)
         self.logger = logging.getLogger(__name__)
         self.transformer = transformer
 
@@ -35,7 +32,7 @@ class CSV2RDFDAG(DAGTemplate):
         sensor = FileSensor(
             task_id=self.get_dag_id() + "." + "data_file_sensor",
             poke_interval=30,
-            filepath=self.transformer.get_extracted_data_dir(),
+            filepath=self.transformer.get_fetched_data_dir(),
             dag=dag,
         )
 
@@ -57,23 +54,24 @@ class CSV2RDFDAG(DAGTemplate):
 
         nb_chunks = self.transformer.get_nb_chunks()
         triples_files = [
-            self.transformer.get_triples_filename(chunk_num)
+            self.transformer.get_path_to_triples(chunk_num)
             for chunk_num in range(nb_chunks)
         ]
 
-        f_output = self.transformer.get_output_filenames()
+        f_out = self.transformer.get_path_to_graph()
         merge = PythonOperator(
-            task_id=self.get_dag_id() + "." + "merge_chunks",
-            python_callable=self.transformer.merge_chunks,
+            task_id=self.get_dag_id() + "." + "merge",
+            python_callable=self.transformer.merge,
             provide_context=True,
-            op_kwargs={"f_list_in": triples_files, "f_out": f_output},
+            op_kwargs={"f_in_list": triples_files, "f_out": f_out},
             dag=dag,
         )
 
         for chunk_num in range(nb_chunks):
 
-            f_in = self.transformer.get_chunk_filename(chunk_num)
-            f_out = self.transformer.get_mapped_chunk_filename(chunk_num)
+            f_in = self.transformer.get_path_to_chunk(chunk_num)
+            f_out = self.transformer.get_path_to_mapped_chunk(chunk_num)
+            f_invalid = self.transformer.get_path_to_invalid_data(chunk_num)
 
             map_taxo = PythonOperator(
                 task_id=self.get_dag_id()
@@ -81,7 +79,7 @@ class CSV2RDFDAG(DAGTemplate):
                 + "map_taxonomic_entities_{}".format(chunk_num),
                 python_callable=self.transformer.map_taxonomic_entities,
                 provide_context=True,
-                op_kwargs={"f_in": f_in, "f_out": f_out},
+                op_kwargs={"f_in": f_in, "f_out": f_out, "f_invalid": f_invalid},
                 dag=dag,
             )
 
@@ -97,12 +95,12 @@ class CSV2RDFDAG(DAGTemplate):
                 )
 
             f_in = f_out
-            f_out = self.transformer.get_triples_filename(chunk_num)
-            wdir = self.transformer.get_onto_mapping_working_dir_template(chunk_num)
+            f_out = self.transformer.get_path_to_triples(chunk_num)
+            wdir = self.transformer.get_mapping_working_dir(chunk_num)
 
             triplify = PythonOperator(
-                task_id=self.get_dag_id() + "." + "triplify_chunk_{}".format(chunk_num),
-                python_callable=self.transformer.triplify_chunk,
+                task_id=self.get_dag_id() + "." + "triplify_{}".format(chunk_num),
+                python_callable=self.transformer.triplify,
                 provide_context=True,
                 op_kwargs={"f_in": f_in, "f_out": f_out, "wdir": wdir},
                 dag=dag,
@@ -112,14 +110,6 @@ class CSV2RDFDAG(DAGTemplate):
                 split >> map_taxo >> map_inter >> triplify >> merge
             else:
                 split >> map_taxo >> triplify >> merge
-
-        # set_graph_dst = PythonOperator(
-        #     task_id=self.get_dag_id() + "." + "set_graph_dst",
-        #     python_callable=self.transformer.set_graph_dst,
-        #     provide_context=True,
-        #     op_kwargs={"f_name": f_graph},
-        #     dag=dag,
-        # )
 
         sensor >> clean >> split
         split >> end  # In case chunks_count is zero

@@ -1,7 +1,0 @@
-internal_id : test_tab_data
-dataSource : Tabular
-service : TabData2RDF
-deleteTempFiles : False
-properties : tab.properties
-scheduleInterval : "@once"
-num_processes : 3

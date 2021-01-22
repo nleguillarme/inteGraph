@@ -35,20 +35,20 @@ def register_dag(dag):
     globals()[dag.dag_id] = dag
 
 
-def create_data_pipeline(config, default_args=None):
+def create_ETL_dag(cfg, default_args=None):
 
     today = date.today()
-    dag_name = config.internal_id + "_" + today.strftime("%d%m%Y")
+    dag_name = cfg.internal_id + "_" + today.strftime("%d%m%Y")
 
-    extractor_id, extractor = factory.get_extractor_dag(config, default_args, dag_name)
+    extractor_id, extractor = factory.get_extractor_dag(cfg, default_args, dag_name)
     transformer_id, transformer = factory.get_transformer_dag(
-        config, default_args, dag_name
+        cfg, default_args, dag_name
     )
-    loader_id, loader = factory.get_loader_dag(config, default_args, dag_name)
+    loader_id, loader = factory.get_loader_dag(cfg, default_args, dag_name)
 
     schedule_interval = (
-        config.scheduleInterval
-        if "scheduleInterval" in config
+        cfg.scheduleInterval
+        if "scheduleInterval" in cfg
         else default_args["schedule_interval"]
     )
     dag = DAG(
@@ -90,39 +90,46 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 # Read scheduler config file to get properties file and jobs directory
-scheduler_cfg_file = "/usr/local/airflow/dags/dags_test_data/scheduler-config.yml"
+root_dir = os.getenv("CONFIG_DIR")
+
+scheduler_cfg_file = os.path.join(root_dir, "scheduler-config.yml")
 scheduler_cfg = read_config(scheduler_cfg_file)
-root_dir = os.path.dirname(scheduler_cfg_file)
-sources_dir = os.path.join(root_dir, scheduler_cfg.sources)
+
+sources_dir = (
+    scheduler_cfg.sources
+    if os.path.isabs(scheduler_cfg.sources)
+    else os.path.join(root_dir, scheduler_cfg.sources)
+)
 
 # Read loader config file
-loader_cfg_file = os.path.join(root_dir, scheduler_cfg.loader)
+loader_cfg_file = (
+    scheduler_cfg.loader
+    if os.path.isabs(scheduler_cfg.loader)
+    else os.path.join(root_dir, scheduler_cfg.loader)
+)
 loader_cfg = read_config(loader_cfg_file)
 
 # Create RDFization jobs
-logging.info("Collect integration jobs from {}".format(sources_dir))
+logging.info(f"Collect integration jobs from {sources_dir}")
 
 jobs = []
 factory = WorkflowFactory()
 sources = [
-    source_dir
-    for source_dir in os.listdir(sources_dir)
-    if os.path.isdir(os.path.join(sources_dir, source_dir))
+    src_dir
+    for src_dir in os.listdir(sources_dir)
+    if os.path.isdir(os.path.join(sources_dir, src_dir))
 ]
 
-for source in sources:
-    source_dir = os.path.join(sources_dir, source)
-    config = read_config(os.path.join(source_dir, "config", "config.yml"))
-    config.root_dir = root_dir
-    config.source_root_dir = source_dir
-    config.run_on_localhost = False
-    config.jars_location = "/usr/local/airflow/jars"
-    config.output_dir = os.path.join(config.source_root_dir, "output")
-    if "internal_id" not in config:
-        config.internal_id = source
-    logging.info(config)
+logging.info(f"Found {len(sources)} integration jobs: {sources}")
 
-    # register_dag(factory.get_extractor_dag(config, default_args))
-    # register_dag(factory.get_transformer_dag(config, default_args))
-    # register_dag(factory.get_loader_dag(config + loader_cfg, default_args))
-    register_dag(create_data_pipeline(config + loader_cfg, default_args))
+for source in sources:
+    src_dir = os.path.join(sources_dir, source)
+    src_cfg = read_config(os.path.join(src_dir, "config", "config.yml"))
+    src_cfg.root_dir = root_dir
+    src_cfg.source_root_dir = src_dir
+    src_cfg.run_on_localhost = False
+    src_cfg.output_dir = os.path.join(src_dir, "output")
+    if "internal_id" not in src_cfg:
+        src_cfg.internal_id = source
+    logging.info(f"Create new ETL pipeline : {src_cfg.internal_id} : {src_cfg}")
+    register_dag(create_ETL_dag(src_cfg + loader_cfg, default_args))

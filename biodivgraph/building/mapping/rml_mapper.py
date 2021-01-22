@@ -18,39 +18,55 @@ class RMLMappingException(Exception):
     pass
 
 
+class MissingEnvironmentVariable(Exception):
+    pass
+
+
 class RMLMappingEngine:
-    def __init__(self, config, working_dir, jar_location):
+    def __init__(self, config):
         self.logger = logging.getLogger(__name__)
-        self.config = config
+        self.cfg = config
 
         self.client = docker.from_env()
         self.mapper_image = self.client.images.get("rmlmapper:latest")
         self.parser_image = self.client.images.get("yarrrml-parser:latest")
 
-        self.path_to_yaml_rules = self.config.ontological_mapping_file
+        # # Sources directory required for docker in docker
+        # self.dind_sources_config_dir = os.getenv("DIND_SOURCES_CONFIG_DIR")
+        # if not self.dind_sources_config_dir:
+        #     raise MissingEnvironmentVariable("DIND_SOURCES_CONFIG_DIR does not exist")
+        self.path_to_yaml_rules = self.cfg.ontological_mapping_file
         self.path_to_rml_rules = None
 
     def run_yarrrml_parser_container(self, yaml_filename, rml_filename):
         remote_yaml_path = os.path.join("/data", yaml_filename)
         remote_rml_path = os.path.join("/data", rml_filename)
+
         volume = {
-            os.path.abspath(os.path.dirname(self.path_to_yaml_rules)): {
-                "bind": "/data",
-                "mode": "rw",
-            }
+            os.path.dirname(self.path_to_yaml_rules): {"bind": "/data", "mode": "rw"}
         }
+        self.logger.debug(f"run_yarrrml_parser_container : mount volume {volume}")
+
         parser_command = f"-i {remote_yaml_path} -o {remote_rml_path}"
+        self.logger.debug(f"run_yarrrml_parser_container : command {parser_command}")
+
         return self.client.containers.run(
             self.parser_image, parser_command, volumes=volume, remove=True
         )
 
-    def run_rmlmapper_container(self, input_dir, rml_filename, rdf_filename):
-        volume = {os.path.abspath(input_dir): {"bind": "/data", "mode": "rw"}}
-
+    def run_rmlmapper_container(self, working_dir, rml_filename, rdf_filename):
         remote_rml_path = os.path.join("/data", rml_filename)
         remote_rdf_path = os.path.join("/data", rdf_filename)
 
+        # working_dir = "test_csv/output/triples/hedde.interactions_0"
+        # dind_path = os.path.join(self.dind_sources_config_dir, working_dir)
+
+        volume = {working_dir: {"bind": "/data", "mode": "rw"}}
+        self.logger.debug(f"run_rmlmapper_container : mount volume {volume}")
+
         mapper_command = f"-m {remote_rml_path} -o {remote_rdf_path} -s nquads"
+        self.logger.debug(f"run_rmlmapper_container : command {mapper_command}")
+
         return self.client.containers.run(
             self.mapper_image, mapper_command, volumes=volume, remove=True
         )
@@ -60,15 +76,16 @@ class RMLMappingEngine:
         yaml_filename = os.path.basename(self.path_to_yaml_rules)
         rml_filename = os.path.splitext(yaml_filename)[0] + ".rml"
 
+        self.path_to_rml_rules = os.path.join(
+            os.path.dirname(self.path_to_yaml_rules), rml_filename
+        )
+
         self.logger.debug(
-            f"run_yarrrml_parser_container : {yaml_filename} -> {rml_filename}"
+            f"run_yarrrml_parser_container : {self.path_to_yaml_rules} -> {self.path_to_rml_rules}"
         )
         response = self.run_yarrrml_parser_container(yaml_filename, rml_filename)
         self.logger.debug(f"yarrrml_parser response : {response}")
 
-        self.path_to_rml_rules = os.path.join(
-            os.path.dirname(self.path_to_yaml_rules), rml_filename
-        )
         if os.path.exists(self.path_to_rml_rules):
             self.logger.info(
                 "Conversion of {} to RML successful".format(
@@ -90,11 +107,7 @@ class RMLMappingEngine:
 
         # Convert YARRRML rules to RML rules
         if self.path_to_rml_rules == None:
-            try:
-                self.convert_yarrrml_rules_to_rml()
-            except YARRRMLParsingException as err:
-                self.logger.error("{}. Abort !".format(err))
-                raise
+            self.convert_yarrrml_rules_to_rml()
 
         # Apply RML rules to transform data in CSV files into RDF triples
         if os.path.exists(self.path_to_rml_rules):
@@ -108,7 +121,7 @@ class RMLMappingEngine:
             response = self.run_rmlmapper_container(wdir, rml_filename, rdf_filename)
             self.logger.debug(f"rmlmapper response : {response}")
 
-            if not os.path.exists(os.path.join(wdir, f_out)):
+            if not os.path.exists(os.path.join(wdir, rdf_filename)):
                 raise RMLMappingException(
                     "Mapping of data to RDF failed ({} file not found)".format(f_out)
                 )
@@ -123,10 +136,10 @@ class RMLMappingEngine:
 
         df = df.rename(
             columns={
-                self.config.subject_column_name: "sub",
-                self.config.predicate_column_name: "pred",
-                self.config.object_column_name: "obj",
-                self.config.references_column_name: "references",
+                self.cfg.subject_column_name: "sub",
+                self.cfg.predicate_column_name: "pred",
+                self.cfg.object_column_name: "obj",
+                self.cfg.references_column_name: "references",
             }
         )
 
@@ -145,27 +158,23 @@ class RMLMappingEngine:
         df_sub_taxon = df[
             [
                 "sub",
-                self.config.subject_name_column_name,
-                self.config.subject_rank_column_name,
+                self.cfg.subject_name_column_name,
+                self.cfg.subject_rank_column_name,
             ]
         ].rename(
             columns={
                 "sub": "iri",
-                self.config.subject_name_column_name: "scientific_name",
-                self.config.subject_rank_column_name: "taxon_rank",
+                self.cfg.subject_name_column_name: "scientific_name",
+                self.cfg.subject_rank_column_name: "taxon_rank",
             }
         )
         df_obj_taxon = df[
-            [
-                "obj",
-                self.config.object_name_column_name,
-                self.config.object_rank_column_name,
-            ]
+            ["obj", self.cfg.object_name_column_name, self.cfg.object_rank_column_name]
         ].rename(
             columns={
                 "obj": "iri",
-                self.config.object_name_column_name: "scientific_name",
-                self.config.object_rank_column_name: "taxon_rank",
+                self.cfg.object_name_column_name: "scientific_name",
+                self.cfg.object_rank_column_name: "taxon_rank",
             }
         )
 

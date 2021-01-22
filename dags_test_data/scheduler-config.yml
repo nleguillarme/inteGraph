@@ -1,6 +1,0 @@
-properties : biodivgraph.properties
-sources : sources
-loader: loader-config.yml
-#integrationJobs : services
-#publishingJob : neo4j-store-config.yml
-#dumpDirectory : dumps

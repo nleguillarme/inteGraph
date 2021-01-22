@@ -21,114 +21,106 @@ class RDFSplittingException(Exception):
     pass
 
 
+class RDFoxLoadingException(Exception):
+    pass
+
+
 class RDFoxLoader(Loader):
     def __init__(self, config):
         Loader.__init__(self, "rdfox_loader")
         self.logger = logging.getLogger(__name__)
-        self.config = config
+        self.cfg = config
+        self.cfg.rdf_format = "nq"
 
         self.rdfox_url = (
-            f"http://{self.config.rdfox_role}:{self.config.rdfox_password}"
-            f"@{self.config.rdfox_host}:{self.config.rdfox_port}/datastores/{self.config.rdfox_datastore}/content"
+            f"http://{self.cfg.rdfox_role}:{self.cfg.rdfox_password}"
+            f"@{self.cfg.rdfox_host}:{self.cfg.rdfox_port}"
         )
-        self.headers = {}
+        self.headers = {"Content-Type": "application/n-quads"}
 
-        self.config.local_data_dir = os.path.join(self.config.output_dir, "graph")
-        self.config.shared_dir_for_source = os.path.join(
-            self.config.root_dir, self.config.shared_dir, self.config.internal_id
+        self.cfg.graph_dir = os.path.join(self.cfg.output_dir, "graph")
+        self.cfg.shared_dir_for_source = os.path.join(
+            self.cfg.root_dir, self.cfg.shared_dir, self.cfg.internal_id
         )
 
         self.logger.info("New RDFox Loader with id {}".format(self.get_id()))
 
     def run(self):
-        self.clean_shared_dir()
-        self.split_data()
         if self.test_connection_to_db():
-            for file in glob.glob(
-                os.path.join(self.config.shared_dir_for_source, "*.nq")
-            ):
-                self.load_data(f_in=file)
+            self.clean_split_dir()
+            self.split_data()
+            self.load_data()
 
     def split_data(self, **kwargs):
-        path_to_rdf = self.get_input_filename(self.config.local_data_dir)
-        self.logger.debug(f"{self.config.local_data_dir}, {path_to_rdf}")
+        path_to_rdf = self.get_path_to_graph()
         if path_to_rdf:
-            self.logger.debug(f"Split RDF file {path_to_rdf}")
-            filename = os.path.basename(path_to_rdf)
-            if not split_rdf_files(self.config.local_data_dir, filename):
-                raise RDFSplittingException()
-            for file in glob.glob(
-                os.path.join(self.config.local_data_dir, "split", "*.nq")
+            self.logger.info(f"Split RDF file {path_to_rdf}")
+            if not split_rdf_files(
+                self.get_graph_dir(), os.path.basename(path_to_rdf), output_dir="split"
             ):
-                copy_file_to_dir(file, self.config.shared_dir_for_source)
+                raise RDFSplittingException()
+            # for file in glob.glob(
+            #     os.path.join(self.get_split_dir(), f"*.{self.cfg.rdf_format}")
+            # ):
+            #     copy_file_to_dir(file, self.cfg.shared_dir_for_source)
 
     def test_connection_to_db(self):
-        r = requests.get(
-            f"http://{self.config.rdfox_role}:{self.config.rdfox_password}@localhost:12110/datastores"
-        )
+        r = requests.get(self.rdfox_url + "/datastores")
         r.raise_for_status()
         content = r.text
         if content:
             lines = content.splitlines()
             if len(lines) > 1:
                 datastores = [x.strip('"') for x in lines[1:]]
-                return self.config.rdfox_datastore in datastores
-
-    def load_data(self, f_in, **kwargs):
-        self.logger.debug(
-            f"Load file {f_in} to datastore {self.config.rdfox_datastore}"
+                return self.cfg.rdfox_datastore in datastores
+        self.logger.error(
+            f"Unable to connect to {self.cfg.rdfox_host}:{self.cfg.rdfox_port}"
         )
-        data = open(f_in)
-        r = requests.post(self.rdfox_url, headers=self.headers, data=data)
-        r.raise_for_status()
-        content = r.text
-        if content:
-            lines = content.splitlines()
-            if len(lines) > 0:
-                nb_facts = lines[-1].split(" ")[-1]
-                if int(nb_facts) > 0:
-                    self.logger.info(
-                        f"Added {nb_facts} new facts to datastore {self.config.rdfox_datastore}"
-                    )
-                    return True
         return False
 
-    def get_input_filename(self, dir):
+    def load_data(self, **kwargs):
+        for file in glob.glob(os.path.join(self.get_split_dir(), "*.nq")):
+            self.logger.info(
+                f"Load file {file} to datastore {self.cfg.rdfox_datastore}"
+            )
+            data = open(file)
+            r = requests.post(
+                self.rdfox_url + f"/datastores/{self.cfg.rdfox_datastore}/content",
+                headers=self.headers,
+                data=data,
+            )
+            r.raise_for_status()
+            content = r.text
+            if content:
+                lines = content.splitlines()
+                if len(lines) > 0:
+                    nb_facts = lines[-1].split(" ")[-1]
+                    if int(nb_facts) > 0:
+                        self.logger.info(
+                            f"Added {nb_facts} new facts to datastore {self.cfg.rdfox_datastore}"
+                        )
+                        continue
+            raise RDFoxLoadingException(content)
+
+    def get_path_to_graph(self):
+        dir = self.get_graph_dir()
         files = [
             f
             for f in listdir(dir)
             if os.path.isfile(os.path.join(dir, f))
-            and f.endswith(".nt")
-            and f[0] != "."
+            and f.endswith(f".{self.cfg.rdf_format}")
+            and not f.startswith(".")
         ]
-        if len(files) == 1:
-            return os.path.join(dir, files[0])
-        else:
-            return None
+        if len(files) != 1:
+            raise FileNotFoundError(f"No or multiple files found in {dir} : {files}")
+        return os.path.join(dir, files[0])
 
-    def get_local_data_dir(self):
-        return self.config.local_data_dir
+    def get_graph_dir(self):
+        return self.cfg.graph_dir
 
-    def clean_shared_dir(self, **kwargs):
-        clean_dir(self.config.shared_dir_for_source)
+    def get_split_dir(self):
+        return os.path.join(self.get_graph_dir(), "split")
 
-
-def main():
-    parser = argparse.ArgumentParser(description="RDFox loader command line interface.")
-
-    parser.add_argument("src_config", help="YAML configuration file for the source.")
-    parser.add_argument("loader_config", help="YAML configuration file for the loader.")
-    args = parser.parse_args()
-
-    src_config = read_config(args.src_config)
-    src_config.output_dir = os.path.join(src_config.source_root_dir, "output")
-    src_config.root_dir = "/home/leguilln/workspace/BiodivGraph/dags_test_data"
-    src_config.jars_location = "jars"
-    loader_config = read_config(args.loader_config)
-
-    process = RDFoxLoader(src_config + loader_config)
-    process.run()
-
-
-if __name__ == "__main__":
-    main()
+    def clean_split_dir(self, **kwargs):
+        clean_dir(self.get_split_dir())
+        # clean_dir(self.cfg.shared_dir_for_source)

@@ -1,6 +1,0 @@
-db: virtuoso
-container_name: biodivgraph_virtuoso_1
-user_name: dba
-user_password: dba
-shared_dir: shared_dir
-remote_dir: /data/dumps

@@ -1,8 +1,0 @@
-internalId : test_virtuoso
-service : BulkLoader
-containerName : biodivgraph_virtuoso_1
-remoteDirectory : /data
-userName : dba
-userPassword : dba
-cores : 12
-scheduleInterval : "@once"

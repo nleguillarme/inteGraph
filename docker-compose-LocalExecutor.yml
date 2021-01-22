@@ -1,4 +1,9 @@
 version: '2.1'
+
+# volumes:
+#   sources_config:
+#     external: true
+
 services:
 
     # neo4j:
@@ -37,7 +42,6 @@ services:
       volumes:
         - ./RDFox-data/RDFox.lic:/opt/RDFox/RDFox.lic
         - ./rdfox-server-directory:/home/rdfox/.RDFox
-        - ./RDFox-data:/data
       # environment:
       #   RDFOX_ROLE: admin
       #   RDFOX_PASSWORD: leca2019
@@ -68,19 +72,15 @@ services:
     #     volumes:
     #         - ./dags_test_data/:/opt/shared-directory
 
-    # yarrrmlmapper:
-    #     build: https://github.com/RMLio/yarrrml-rmlmapper-docker.git#:docker
-    #     image: yarrrmlmapper
-    #     volumes:
-
-
-    # nomer:
-    #     build: https://github.com/nleguillarme/nomer-docker.git
-    #     image: nomer-docker
-    #     ports:
-    #         - "5000:5000"
-    #     volumes:
-    #         - .tmp/.nomer:/.nomer
+    nomer:
+        build:
+          context: https://github.com/nleguillarme/nleguillarme/pynomer.git
+          dockerfile: Dockerfile.server
+        image: pynomer-server
+        ports:
+            - "9090:9090"
+        volumes:
+            - ~/.biodivgraph/nomer:/nomer
 
     postgres:
         image: postgres:9.6
@@ -97,23 +97,30 @@ services:
             - DOCKER_UID=1001
             - DOCKER_GID=999
         image: custom-airflow
-        #restart: always
+        restart: on-failure
         depends_on:
             - postgres
-            #- nomer
             - rdfox
+            - nomer
         environment:
             - AIRFLOW__CORE__EXECUTOR=LocalExecutor
             - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True
-            - AIRFLOW__SCHEDULER__CATCHUP_BY_DEFAULT=False
             - AIRFLOW__CORE__LOAD_EXAMPLES=False
+            - AIRFLOW__SCHEDULER__CATCHUP_BY_DEFAULT=False
+            - AIRFLOW__LOGGING__LOGGING_LEVEL=DEBUG
             - AIRFLOW__WEBSERVER__DAG_ORIENTATION=TB
-            - EXECUTOR=Local
+            - AIRFLOW__WEBSERVER__DAG_DEFAULT_VIEW=graph
+            - AIRFLOW__WEBSERVER__AUTHENTICATE=False
+            - CONFIG_DIR=${CONFIG_DIR}
+            - USER_UID=1001
+            #- AIRFLOW__CORE__FERNET_KEY=${FERNET_KEY}"
         volumes:
-            - .:/usr/local/airflow/dags
-            - ./jars:/usr/local/airflow/jars
+            - ${CONFIG_DIR}:${CONFIG_DIR}
+            - ${PWD}:/opt/airflow/dags
+            - ${HOME}/.biodivgraph/logs:/opt/airflow/logs
             - /var/run/docker.sock:/var/run/docker.sock
             - /usr/bin/docker:/usr/bin/docker
+            # - ~/.biodivgraph/nomer:/opt/airflow/nomer
             # Uncomment to include custom plugins
             # - ./plugins:/usr/local/airflow/plugins
         ports:

@@ -1,15 +1,7 @@
-from .csv2rdf_dag import *
-
-# from .bulk_loading_dag import *
-# from .neo4j_rdf_import_dag import *
-# from biodivgraph.building.transformers import CSV2RDF
-
-# from biodivgraph.building.services import BulkLoaderService
-# from biodivgraph.building.services import Neo4jRDFImportService
-
 from .file_extractor_dag import FileExtractorDAG
 from .csv2rdf_dag import CSV2RDFDAG
 from .virtuoso_bulk_loader_dag import VirtuosoBulkLoaderDAG
+from .rdfox_loader_dag import RDFoxLoaderDAG
 
 
 class UnsupportedSourceException(Exception):
@@ -49,8 +41,12 @@ class WorkflowFactory:
             return self.get_dag_instance(
                 VirtuosoBulkLoaderDAG, config, default_args, parent_dag_name
             )
+        elif config.db == "rdfox":
+            return self.get_dag_instance(
+                RDFoxLoaderDAG, config, default_args, parent_dag_name
+            )
         else:
-            raise UnsupportedDatabaseException(config.data_format)
+            raise UnsupportedDatabaseException(config.db)
 
     def get_dag_instance(self, dag_class, config, default_args, parent_dag_name):
         schedule_interval = (

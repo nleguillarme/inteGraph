@@ -16,42 +16,44 @@ class FileExtractor(Extractor):
         Extractor.__init__(self, "file_extractor")
         self.logger = logging.getLogger(__name__)
 
-        self.config = config
-        self.config.output_dir = os.path.join(self.config.source_root_dir, "output")
-        self.config.output_data_dir = os.path.join(self.config.output_dir, "extracted")
+        self.cfg = config
+        # self.cfg.output_dir = os.path.join(self.cfg.source_root_dir, "output")
+        self.cfg.fetched_data_dir = os.path.join(self.cfg.output_dir, "fetched")
+        self.cfg.file_location = os.path.expandvars(self.cfg.file_location)
 
     def run(self):
-        self.clean_output_dir()
+        self.clean_fetched_data_dir()
         self.fetch_dataset()
         if not self.is_txt_file():
             self.unpack_archive()
 
-    def clean_output_dir(self, **kwargs):
-        clean_dir(self.config.output_data_dir)
+    def clean_fetched_data_dir(self, **kwargs):
+        clean_dir(self.cfg.fetched_data_dir)
 
     def fetch_dataset(self, **kwargs):
         self.init_requests_session()
+        self.logger.debug(f"Fetch dataset at {self.cfg.file_location}")
         with self.session.get(
-            self.config.file_location, allow_redirects=True, stream=True
+            self.cfg.file_location, allow_redirects=True, stream=True
         ) as resp:
             resp.raise_for_status()
-            with open(self.get_fetched_filename(), "wb") as f:
+            with open(self.get_path_to_fetched_data(), "wb") as f:
                 shutil.copyfileobj(resp.raw, f)
-
-    def unpack_archive(self, **kwargs):
-        Archive(self.get_fetched_filename()).extractall(self.config.output_data_dir)
 
     def is_txt_file(self, **kwargs):
         try:
-            with open(self.get_fetched_filename(), "tr") as f:
+            with open(self.get_path_to_fetched_data(), "tr") as f:
                 f.read()
                 return True
         except:
             return False
 
-    def get_fetched_filename(self):
+    def unpack_archive(self, **kwargs):
+        Archive(self.get_path_to_fetched_data()).extractall(self.cfg.fetched_data_dir)
+
+    def get_path_to_fetched_data(self):
         return os.path.join(
-            self.config.output_data_dir, self.config.file_location.rsplit("/", 1)[1]
+            self.cfg.fetched_data_dir, self.cfg.file_location.rsplit("/", 1)[1]
         )
 
     def init_requests_session(self):
@@ -63,7 +65,7 @@ class FileExtractor(Extractor):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="csv2rdf pipeline command line interface."
+        description="FileExtractor pipeline command line interface."
     )
 
     parser.add_argument("cfg_file", help="YAML configuration file.")

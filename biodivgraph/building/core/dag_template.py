@@ -3,9 +3,9 @@ import logging
 
 
 class DAGTemplate(ABC):
-    def __init__(self, dag_id):
+    def __init__(self, dag_id, parent_dag_name=None):
         self.logger = logging.getLogger(__name__)
-        self.dag_id = dag_id
+        self.dag_id = (parent_dag_name + "." if parent_dag_name else "") + f"{dag_id}"
         super().__init__()
 
     @abstractmethod

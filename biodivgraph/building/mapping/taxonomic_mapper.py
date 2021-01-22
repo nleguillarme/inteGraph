@@ -3,7 +3,9 @@ import pandas as pd
 from ...core import URIMapper, URIManager, TaxId
 import os
 import docker
+import re
 from docker.errors import NotFound, APIError
+from pynomer.client import NomerClient
 
 """
 https://github.com/globalbioticinteractions/globalbioticinteractions/wiki/Taxonomy-Matching
@@ -39,19 +41,27 @@ class TaxonomicEntityMapper:
             self.target_taxonomy = self.default_taxonomy
 
         self.cache_matcher = "globi-taxon-cache"
-        self.enrich_matcher = "globi-enrich"
+        self.enrich_matcher = "globi-globalnames"  # "globi-enrich"
         self.scrubbing_matcher = "globi-correct"
         self.wikidata_id_matcher = "wikidata-taxon-id-web"
 
-        self.client = docker.from_env()
-        self.pynomer_image = self.client.images.get("pynomer:latest")
+        host = "localhost" if self.config.run_on_localhost else "nomer"
+        self.client = NomerClient(base_url=f"http://{host}:9090/")  # docker.from_env()
+        # self.pynomer_image = self.client.images.get("pynomer:latest")
 
     def run_pynomer_append(self, name, id, matcher):
-        volume = {os.path.abspath(".nomer"): {"bind": "/.nomer", "mode": "rw"}}
-        append_command = f'pynomer append "{id}\t{name}" -m {matcher} -e -o tsv'
-        return self.client.containers.run(
-            self.pynomer_image, append_command, volumes=volume, remove=False
+        return self.client.append(
+            query=f"{id}\t{name}", matcher=matcher, p=None, o="tsv"
         )
+        # volume = {
+        #     os.path.abspath("~/.biodivgraph/nomer"): {"bind": "/nomer", "mode": "rw"}
+        # }
+        # append_command = (
+        #     f'pynomer append -p /nomer/properties "{id}\t{name}" -m {matcher} -e -o tsv'
+        # )
+        # return self.client.containers.run(
+        #     self.pynomer_image, append_command, volumes=volume, remove=False
+        # )
 
     def scrub_taxname(self, name):
         name = name.split(" sp. ")[0]
@@ -61,32 +71,49 @@ class TaxonomicEntityMapper:
 
     def parse_entry(self, entry):
         if entry[2] == "NONE":
-            return False, None, None, None
+            return None, None, None
         taxonomy = entry[3].split(":")[0]
         uri = entry[-1]
         taxid = entry[3]
-        return True, taxid, taxonomy, uri
+        return taxid, taxonomy, uri
 
-    def get_preferred_entry(self, entries):
-        for entry in entries:
-            matched, taxid, taxonomy, uri = self.parse_entry(entry)
-            if matched and taxonomy == self.target_taxonomy:
-                return True, taxid, taxonomy, uri
-        return False, taxid, taxonomy, uri
+    # def get_preferred_entry(self, entries):
+    #     for entry in entries:
+    #         matched, taxid, taxonomy, uri = self.parse_entry(entry)
+    #         self.logger.debug(
+    #             f"{matched}, {taxid}, {taxonomy}, {uri}, {self.target_taxonomy}, {taxonomy == self.target_taxonomy}"
+    #         )
+    #         if matched and taxonomy == self.target_taxonomy:
+    #             return True, taxid, taxonomy, uri
+    #     return False, taxid, taxonomy, uri
 
     def parse_tsv_result(self, result):
         if not result:
             raise ValueError("Nomer result is {}".format(result))
-        result_str = result.decode("utf-8")
-        entries = result_str.split("\n")
-        entries = [entry.strip(" ").rstrip("\t").split("\t") for entry in entries]
-        entries = [entry for entry in entries if len(entry) > 1]
-        if len(entries) < 1:
-            raise ValueError("Nomer result is an empty string")
-        return self.get_preferred_entry(entries)
+        result_str = result  # .decode("utf-8")
+        match = False
+        for line in result_str.splitlines():
+            if re.search(self.target_taxonomy, line):
+                self.logger.debug(
+                    f"Found entry for target taxo {self.target_taxonomy} : {line}"
+                )
+                match = True
+                break
+        entry = line.strip(" ").rstrip("\t").split("\t")
+        taxid, taxonomy, uri = self.parse_entry(entry)
+        return match, taxid, taxonomy, uri
+
+        # entries = result_str.split("\n")
+        # entries = [entry.strip(" ").rstrip("\t").split("\t") for entry in entries]
+        # entries = [entry for entry in entries if len(entry) > 1]
+        # if len(entries) < 1:
+        #     raise ValueError("Nomer result is an empty string")
+        # return self.get_preferred_entry(entries)
 
     def get_taxid_from_name(self, name):
-        self.logger.info("Try to match name {}".format(name))
+        self.logger.debug(
+            "Match {} in target taxo {}".format(name, self.target_taxonomy)
+        )
         matched, taxid, taxonomy, uri = self.parse_tsv_result(
             self.run_pynomer_append(name=name, id="", matcher=self.cache_matcher)
         )
@@ -95,6 +122,14 @@ class TaxonomicEntityMapper:
                 self.run_pynomer_append(name=name, id="", matcher=self.enrich_matcher)
             )
         return matched, taxid, taxonomy, uri
+
+    def get_taxid_in_target_taxo(self, taxid):
+        self.logger.debug(
+            "Match {} in target taxo {}".format(taxid, self.target_taxonomy)
+        )
+        return self.parse_tsv_result(
+            self.run_pynomer_append(name="", id=taxid, matcher=self.wikidata_id_matcher)
+        )
 
     def map(self, name="", taxid=""):
         if (
@@ -105,25 +140,47 @@ class TaxonomicEntityMapper:
             taxid = self.source_taxonomy + ":{}".format(taxid)
         while True:
             try:
-                self.logger.info("Match ({}, {})".format(name, taxid))
+                self.logger.info(
+                    "Match ({}, {}) in target taxo {}".format(
+                        name, taxid, self.target_taxonomy
+                    )
+                )
 
                 matched = False
+                # If we know the id in the source taxo, use wikidata matcher
+                # to find the corresponding id in the target taxo
                 if taxid != "":
-                    matched, _, _, uri = self.parse_tsv_result(
-                        self.run_pynomer_append(
-                            name="", id=taxid, matcher=self.wikidata_id_matcher
+                    matched, _, _, uri = self.get_taxid_in_target_taxo(taxid)
+                    if not matched:
+                        self.logger.debug(
+                            "No match for {} in target taxo {}".format(
+                                taxid, self.target_taxonomy
+                            )
                         )
-                    )
 
+                # If no match from id, try to get taxid from name
                 if not matched:
                     matched, taxid, _, uri = self.get_taxid_from_name(name)
-
-                if not matched and taxid:
-                    matched, _, _, uri = self.parse_tsv_result(
-                        self.run_pynomer_append(
-                            name="", id=taxid, matcher=self.wikidata_id_matcher
+                    if not matched:
+                        self.logger.debug(
+                            "No match for {} in target taxo {}".format(
+                                name, self.target_taxonomy
+                            )
                         )
+
+                # No match in the target taxo, but a match in another taxo -> use wikidata matcher
+                if not matched and taxid:
+                    self.logger.debug("Match for {} : {}".format(name, taxid))
+                    self.logger.debug(
+                        "Match {} in target taxo {}".format(taxid, self.target_taxonomy)
                     )
+                    matched, _, _, uri = self.get_taxid_in_target_taxo(taxid)
+                    if not matched:
+                        self.logger.debug(
+                            "No match for {} in target taxo {}".format(
+                                taxid, self.target_taxonomy
+                            )
+                        )
 
                 if not matched:
                     self.logger.info(
@@ -148,8 +205,12 @@ class TaxonomicMapper:
     def __init__(self, config):
         self.logger = logging.getLogger(__name__)
         self.config = config
-        # for column_config in self.config.columns:
-        #     column_config.run_on_localhost = self.config.run_on_localhost
+        for column_config in self.config.columns:
+            column_config.run_on_localhost = (
+                self.config.run_on_localhost
+                if "run_on_localhost" in self.config
+                else False
+            )
 
     def map(self, df):
         self.logger.info("Start mapping taxonomic entities")

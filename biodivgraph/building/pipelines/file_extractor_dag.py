@@ -14,10 +14,7 @@ from biodivgraph.building.extractors import FileExtractor
 class FileExtractorDAG(DAGTemplate):
     def __init__(self, config, parent_dag_name=None):
         extractor = FileExtractor(config)
-        dag_id = (parent_dag_name + "." if parent_dag_name else "") + "{}".format(
-            extractor.get_id()
-        )
-        DAGTemplate.__init__(self, dag_id)
+        DAGTemplate.__init__(self, extractor.get_id(), parent_dag_name)
         self.logger = logging.getLogger(__name__)
         self.extractor = extractor
 
@@ -38,8 +35,8 @@ class FileExtractorDAG(DAGTemplate):
         )
 
         clean = PythonOperator(
-            task_id=self.get_dag_id() + "." + "clean_output_dir",
-            python_callable=self.extractor.clean_output_dir,
+            task_id=self.get_dag_id() + "." + "clean_fetched_data_dir",
+            python_callable=self.extractor.clean_fetched_data_dir,
             dag=dag,
         )
 
