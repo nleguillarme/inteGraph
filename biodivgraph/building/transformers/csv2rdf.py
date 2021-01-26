@@ -49,16 +49,20 @@ class CSV2RDF(Transformer):
         self.properties.taxonomic_mapper_conf.run_on_localhost = (
             self.cfg.run_on_localhost
         )
-        self.taxonomic_mapper = TaxonomicMapper(self.properties.taxonomic_mapper_conf)
+        self.taxonomic_mapper = None
+        if "taxonomic_mapper_conf" in self.properties:
+            self.taxonomic_mapper = TaxonomicMapper(
+                self.properties.taxonomic_mapper_conf
+            )
 
         # Create interaction mapper
-        self.interaction_mapper = None
-        if "interaction_mapping_file" in self.properties.triplifier_conf:
-            self.properties.triplifier_conf.interaction_mapping_file = os.path.join(
-                self.cfg.source_root_dir,
-                self.properties.triplifier_conf.interaction_mapping_file,
-            )
-            self.interaction_mapper = VocabularyMapper(self.properties.triplifier_conf)
+        self.entity_mapper = None
+        if "entity_mapper_conf" in self.properties:
+            for column_config in self.properties.entity_mapper_conf.columns:
+                column_config.mapping_file = os.path.join(
+                    self.cfg.source_root_dir, column_config.mapping_file
+                )
+            self.entity_mapper = VocabularyMapper(self.properties.entity_mapper_conf)
 
         # Create triplifier
         self.properties.triplifier_conf.ontological_mapping_file = os.path.join(
@@ -76,12 +80,20 @@ class CSV2RDF(Transformer):
         for chunk_num in range(self.get_nb_chunks()):
             f_in = self.get_path_to_chunk(chunk_num)
             f_out = self.get_path_to_mapped_chunk(chunk_num)
-            f_invalid = self.get_path_to_invalid_data(chunk_num)
-            self.map_taxonomic_entities(f_in, f_out, f_invalid)
+            f_not_matched = self.get_path_to_invalid_data(chunk_num)
+            drop_not_matched = not self.with_other_entities_mapping()
 
-            if self.with_interactions_mapping():
+            self.map_taxonomic_entities(
+                f_in,
+                f_out,
+                drop_not_matched=drop_not_matched,
+                f_not_matched=f_not_matched,
+            )
+            if self.map_other_entities():
                 f_in = f_out
-                self.map_interactions(f_in, f_out)
+                self.map_other(
+                    f_in, f_out, drop_not_matched=True, f_not_matched=f_not_matched
+                )
 
             f_in = f_out
             f_out = self.get_path_to_triples(chunk_num)
@@ -146,17 +158,37 @@ class CSV2RDF(Transformer):
         clean_dir(self.cfg.processed_dir)
         os.rename(filepath, os.path.join(self.cfg.processed_dir, filename))
 
-    def map_taxonomic_entities(self, f_in, f_out, f_invalid, **kwargs):
+    def map_taxonomic_entities(self, f_in, f_out, **kwargs):
         df = read(f_in, sep=self.properties.delimiter)
-        matched_df, not_matched_df = self.taxonomic_mapper.map(df)
-        write(matched_df, f_out, sep=self.properties.delimiter)
-        if not_matched_df.empty:
-            write(not_matched_df, f_invalid, sep=self.properties.delimiter)
+        df, uri_colnames = self.taxonomic_mapper.map(df)
+        if "drop_not_matched" in kwargs and kwargs["drop_not_matched"]:
+            matched_df = df.dropna(subset=uri_colnames)
+            write(matched_df, f_out, sep=self.properties.delimiter)
+            if "f_not_matched" in kwargs:
+                not_matched_df = df[df[uri_colnames].isnull().any(axis=1)]
+                write(
+                    not_matched_df,
+                    kwargs["f_not_matched"],
+                    sep=self.properties.delimiter,
+                )
+        else:
+            write(df, f_out, sep=self.properties.delimiter)
 
-    def map_interactions(self, f_in, f_out, **kwargs):
+    def map_other_entities(self, f_in, f_out, **kwargs):
         df = read(f_in, sep=self.properties.delimiter)
-        df = self.interaction_mapper.map(df)
-        write(df, f_out, sep=self.properties.delimiter)
+        df, uri_colnames = self.entity_mapper.map(df)
+        if "drop_not_matched" in kwargs and kwargs["drop_not_matched"]:
+            matched_df = df.dropna(subset=uri_colnames)
+            write(matched_df, f_out, sep=self.properties.delimiter)
+            if "f_not_matched" in kwargs:
+                not_matched_df = df[df[uri_colnames].isnull().any(axis=1)]
+                write(
+                    not_matched_df,
+                    kwargs["f_not_matched"],
+                    sep=self.properties.delimiter,
+                )
+        else:
+            write(df, f_out, sep=self.properties.delimiter)
 
     # Validate data and generate RDF triples from each observation
     def triplify(self, f_in, f_out, wdir, **kwargs):
@@ -251,8 +283,11 @@ class CSV2RDF(Transformer):
     def get_nb_chunks(self):
         return self.cfg.num_processes
 
-    def with_interactions_mapping(self):
-        return self.interaction_mapper != None
+    def with_taxonomic_entities_mapping(self):
+        return self.taxonomic_mapper != None
+
+    def with_other_entities_mapping(self):
+        return self.entity_mapper != None
 
 
 def main():

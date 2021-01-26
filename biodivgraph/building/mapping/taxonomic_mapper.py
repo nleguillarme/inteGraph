@@ -243,10 +243,10 @@ class TaxonomicMapper:
         uri_colnames = [
             column_config.uri_column for column_config in self.config.columns
         ]
-        matched_df = df.dropna(subset=uri_colnames)
-        not_matched_df = df[df[uri_colnames].isnull().any(axis=1)]
+        # matched_df = df.dropna(subset=uri_colnames)
+        # not_matched_df = df[df[uri_colnames].isnull().any(axis=1)]
 
-        return matched_df, not_matched_df
+        return df, uri_colnames  # matched_df, not_matched_df
 
     def map_entities(self, entities, id_column, name_column, mapper):
         unique = entities.drop_duplicates()

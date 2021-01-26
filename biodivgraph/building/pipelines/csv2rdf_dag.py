@@ -71,26 +71,40 @@ class CSV2RDFDAG(DAGTemplate):
 
             f_in = self.transformer.get_path_to_chunk(chunk_num)
             f_out = self.transformer.get_path_to_mapped_chunk(chunk_num)
-            f_invalid = self.transformer.get_path_to_invalid_data(chunk_num)
+            f_not_matched = self.transformer.get_path_to_invalid_data(chunk_num)
 
-            map_taxo = PythonOperator(
-                task_id=self.get_dag_id()
-                + "."
-                + "map_taxonomic_entities_{}".format(chunk_num),
-                python_callable=self.transformer.map_taxonomic_entities,
-                provide_context=True,
-                op_kwargs={"f_in": f_in, "f_out": f_out, "f_invalid": f_invalid},
-                dag=dag,
-            )
+            drop_not_matched = True
 
-            if self.transformer.with_interactions_mapping():
-                map_inter = PythonOperator(
+            if self.transformer.with_other_entities_mapping():
+                map_other = PythonOperator(
                     task_id=self.get_dag_id()
                     + "."
-                    + "map_interactions_{}".format(chunk_num),
-                    python_callable=self.transformer.map_interactions,
+                    + "map_other_entities_{}".format(chunk_num),
+                    python_callable=self.transformer.map_other_entities,
                     provide_context=True,
-                    op_kwargs={"f_in": f_out, "f_out": f_out},
+                    op_kwargs={
+                        "f_in": f_out,
+                        "f_out": f_out,
+                        "drop_not_matched": drop_not_matched,
+                        "f_not_matched": f_not_matched,
+                    },
+                    dag=dag,
+                )
+                drop_not_matched = False
+
+            if self.transformer.with_taxonomic_entities_mapping():
+                map_taxo = PythonOperator(
+                    task_id=self.get_dag_id()
+                    + "."
+                    + "map_taxonomic_entities_{}".format(chunk_num),
+                    python_callable=self.transformer.map_taxonomic_entities,
+                    provide_context=True,
+                    op_kwargs={
+                        "f_in": f_in,
+                        "f_out": f_out,
+                        "drop_not_matched": drop_not_matched,
+                        "f_not_matched": f_not_matched,
+                    },
                     dag=dag,
                 )
 
@@ -106,10 +120,17 @@ class CSV2RDFDAG(DAGTemplate):
                 dag=dag,
             )
 
-            if self.transformer.with_interactions_mapping():
-                split >> map_taxo >> map_inter >> triplify >> merge
-            else:
+            if (
+                self.transformer.with_taxonomic_entities_mapping()
+                and self.transformer.with_other_entities_mapping()
+            ):
+                split >> map_taxo >> map_other >> triplify >> merge
+            elif self.transformer.with_taxonomic_entities_mapping():
                 split >> map_taxo >> triplify >> merge
+            elif self.transformer.with_other_entities_mapping():
+                split >> map_other >> triplify >> merge
+            else:
+                split >> triplify >> merge
 
         sensor >> clean >> split
         split >> end  # In case chunks_count is zero

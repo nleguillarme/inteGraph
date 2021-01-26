@@ -1,0 +1,83 @@
+fungal structure : http://purl.obolibrary.org/obo/FAO_0000001
+anatomical entity : http://purl.obolibrary.org/obo/UBERON_0001062
+multicellular fungal structure : http://purl.obolibrary.org/obo/FAO_0002002
+organism substance : http://purl.obolibrary.org/obo/UBERON_0000463
+anatomical structure : http://purl.obolibrary.org/obo/UBERON_0000061
+material anatomical entity : http://purl.obolibrary.org/obo/UBERON_0000465
+shelled egg : http://purl.obolibrary.org/obo/PO_0025131
+phloem sap : http://purl.obolibrary.org/obo/FAO_0000011
+plant organ : http://purl.obolibrary.org/obo/FAO_0001001
+microgametophyte : http://purl.obolibrary.org/obo/FAO_0000007
+native plant cell : http://purl.obolibrary.org/obo/PO_0009001
+portion of vascular tissue : http://purl.obolibrary.org/obo/PO_0009010
+mold : http://purl.obolibrary.org/obo/PO_0006001
+yeast : http://purl.obolibrary.org/obo/PO_0009005
+organic material : http://purl.obolibrary.org/obo/UBERON_0006314
+soil : http://purl.obolibrary.org/obo/UBERON_0000174
+main group molecular entity : http://purl.obolibrary.org/obo/UBERON_0000179
+inorganic molecular entity : http://purl.obolibrary.org/obo/UBERON_0010000
+polyatomic entity : http://purl.obolibrary.org/obo/PO_0025161
+plant axis : http://purl.obolibrary.org/obo/PO_0009011
+pollen : http://purl.obolibrary.org/obo/FAO_0000012
+epidermal cell : http://purl.obolibrary.org/obo/OBI_0100026
+xylem : http://purl.obolibrary.org/obo/CHEBI_24431
+secondary vascular tissue : http://purl.obolibrary.org/obo/UBERON_0000178
+phloem : http://purl.obolibrary.org/obo/CHEBI_16526
+plant litter : http://purl.obolibrary.org/obo/CARO_0001010
+detritus : http://purl.obolibrary.org/obo/PO_0025034
+soil organic matter : http://purl.obolibrary.org/obo/PCO_0000031
+gas molecular entity : http://purl.obolibrary.org/obo/UBERON_0001988
+root epidermal cell : http://purl.obolibrary.org/obo/UBERON_0000468
+secondary xylem : http://purl.obolibrary.org/obo/UBERON_0002050
+organic molecule : http://purl.obolibrary.org/obo/PO_0025538
+root hair cell : http://purl.obolibrary.org/obo/PO_0025496
+fungal anatomical entity : http://purl.obolibrary.org/obo/PO_0000003
+honeydew : http://purl.obolibrary.org/obo/PO_0009002
+plant exudate : http://purl.obolibrary.org/obo/PO_0009007
+resin : http://purl.obolibrary.org/obo/ECOCORE_00000076
+gum : http://purl.obolibrary.org/obo/CHEBI_23367
+mold : http://purl.obolibrary.org/obo/UBERON_0008979
+yeast : http://purl.obolibrary.org/obo/UBERON_0007379
+dead organic matter : http://purl.obolibrary.org/obo/PO_0025540
+dissolved organic matter : http://purl.obolibrary.org/obo/PO_0009008
+living organic matter : http://purl.obolibrary.org/obo/PO_0025280
+particulate organic matter : http://purl.obolibrary.org/obo/PO_0025606
+root litter : http://purl.obolibrary.org/obo/PO_0009015
+undecomposed organic matter : http://purl.obolibrary.org/obo/STWO_4000014
+sunlight : http://purl.obolibrary.org/obo/STWO_4000015
+decaying wood : http://purl.obolibrary.org/obo/ENVO_01000155
+living wood : http://purl.obolibrary.org/obo/ENVO_00001998
+fresh organic matter : http://purl.obolibrary.org/obo/CHEBI_33579
+inorganic molecular entity : http://purl.obolibrary.org/obo/CHEBI_24835
+polyatomic entity : http://purl.obolibrary.org/obo/CHEBI_36357
+plant axis : http://purl.obolibrary.org/obo/PO_0025004
+pollen : http://purl.obolibrary.org/obo/PO_0025281
+epidermal cell : http://purl.obolibrary.org/obo/PO_0004013
+xylem : http://purl.obolibrary.org/obo/PO_0005352
+secondary vascular tissue : http://purl.obolibrary.org/obo/PO_0025409
+phloem : http://purl.obolibrary.org/obo/PO_0005417
+plant litter : http://purl.obolibrary.org/obo/ENVO_01000628
+detritus : http://purl.obolibrary.org/obo/ENVO_01001103
+soil organic matter : http://purl.obolibrary.org/obo/ENVO_04000008
+gas molecular entity : http://purl.obolibrary.org/obo/CHEBI_138675
+root epidermal cell : http://purl.obolibrary.org/obo/PO_0025164
+secondary xylem : http://purl.obolibrary.org/obo/PO_0005848
+organic molecule : http://purl.obolibrary.org/obo/CHEBI_72695
+root hair cell : http://purl.obolibrary.org/obo/PO_0000256
+fungal anatomical entity : http://purl.obolibrary.org/obo/STWO_4000011
+honeydew : http://purl.obolibrary.org/obo/STWO_4000012
+plant exudate : http://purl.obolibrary.org/obo/STWO_0000049
+resin : http://purl.obolibrary.org/obo/STWO_0000051
+gum : http://purl.obolibrary.org/obo/STWO_0000050
+mold : http://purl.obolibrary.org/obo/STWO_4000014
+yeast : http://purl.obolibrary.org/obo/STWO_4000015
+dead organic matter : http://purl.obolibrary.org/obo/STWO_4000008
+dissolved organic matter : http://purl.obolibrary.org/obo/STWO_4000000
+living organic matter : http://purl.obolibrary.org/obo/STWO_4000009
+particulate organic matter : http://purl.obolibrary.org/obo/STWO_4000001
+root litter : http://purl.obolibrary.org/obo/STWO_4000007
+undecomposed organic matter : http://purl.obolibrary.org/obo/STWO_4000002
+sunlight : http://purl.obolibrary.org/obo/STWO_4000004
+decaying wood : http://purl.obolibrary.org/obo/STWO_4000010
+living wood : http://purl.obolibrary.org/obo/STWO_4000013
+fresh organic matter : http://purl.obolibrary.org/obo/STWO_4000006
