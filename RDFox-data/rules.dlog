@@ -1,0 +1,19 @@
+rdfs:subClassOf[owl:Nothing,?X], rdfs:subClassOf[?X,?X], rdfs:subClassOf[?X,owl:Thing] :- owl:Class[?X], FILTER(isIRI(?X)) .
+rdfs:subPropertyOf[owl:bottomDataProperty,?X], rdfs:subPropertyOf[?X,?X], rdfs:subPropertyOf[?X,owl:topDataProperty] :- owl:DatatypeProperty[?X] .
+rdfs:subPropertyOf[owl:bottomObjectProperty,?X], rdfs:subPropertyOf[?X,?X], rdfs:subPropertyOf[?X,owl:topObjectProperty] :- owl:ObjectProperty[?X] .
+
+
+rdfs:subClassOf[owl:Nothing,?X], rdfs:subClassOf[?X,?X], rdfs:subClassOf[?Y,?Y], rdfs:subClassOf[?Y,owl:Thing] :- rdfs:subClassOf[?X,?Y], FILTER(isIRI(?X)), FILTER(isIRI(?Y)) .
+rdfs:subClassOf[?X,?Z] :- rdfs:subClassOf[?X,?Y], rdfs:subClassOf[?Y,?Z], FILTER(isIRI(?Z)) .
+rdfs:subClassOf[?X,?Y], rdfs:subClassOf[?Y,?X] :- owl:equivalentClass[?X,?Y], FILTER(isIRI(?X)), FILTER(isIRI(?Y)) .
+owl:equivalentClass[?X,?Y] :- rdfs:subClassOf[?X,?Y], rdfs:subClassOf[?Y,?X], FILTER(isIRI(?X)), FILTER(isIRI(?Y)) .
+rdfs:subPropertyOf[?X,?X], rdfs:subPropertyOf[?Y,?Y] :- rdfs:subPropertyOf[?X,?Y] .
+rdfs:subPropertyOf[?X,?Z] :- rdfs:subPropertyOf[?X,?Y], rdfs:subPropertyOf[?Y,?Z] .
+rdfs:subPropertyOf[?X,?Y], rdfs:subPropertyOf[?Y,?X] :- owl:equivalentProperty[?X,?Y] .
+owl:equivalentProperty[?X,?Y] :- rdfs:subPropertyOf[?X,?Y], rdfs:subPropertyOf[?Y,?X] .
+
+
+rdfs:domain[?P,?B] :- rdfs:domain[?P,?A], rdfs:subClassOf[?A,?B] .
+rdfs:domain[?P,?A] :- rdfs:domain[?Q,?A], rdfs:subPropertyOf[?P,?Q] .
+rdfs:range[?P,?B] :- rdfs:range[?P,?A], rdfs:subClassOf[?A,?B] .
+rdfs:range[?P,?A] :- rdfs:range[?Q,?A], rdfs:subPropertyOf[?P,?Q] .

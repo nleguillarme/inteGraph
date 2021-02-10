@@ -40,23 +40,12 @@ services:
     rdfox:
       image: oxfordsemantic/rdfox
       volumes:
-        - ./RDFox-data/RDFox.lic:/opt/RDFox/RDFox.lic
-        - ./rdfox-server-directory:/home/rdfox/.RDFox
-      # environment:
-      #   RDFOX_ROLE: admin
-      #   RDFOX_PASSWORD: leca2019
+        - ${PWD}/RDFox-data/RDFox.lic:/opt/RDFox/RDFox.lic
+        - ${PWD}/rdfox-server-directory:/home/rdfox/.RDFox
       cap_drop:
         - ALL
       ports:
         - "12110:12110"
-
-    # graphdb:
-    #     image: ontotext/graphdb:9.3.3-free
-    #     ports:
-    #         - "7200:7200"
-    #     volumes:
-    #         - .graphdb/:/opt/graphdb/home/data/
-    #         - ./dags_test_data/:/opt/graphdb/home/data/
 
     # anzograph:
     #     build:
@@ -68,21 +57,33 @@ services:
     #     image: cambridgesemantics/anzograph:latest
     #     ports:
     #         - "8081:8080"
-    #         - "8443:8443"virtuoso
+    #         - "8443:8443"
     #     volumes:
     #         - ./dags_test_data/:/opt/shared-directory
 
-    nomer:
-        build:
-          context: ${HOME}/workspace/pynomer
-          #context: https://github.com/nleguillarme/pynomer.git
-          dockerfile: Dockerfile.server
-        image: pynomer-server
-        user: "${USER_ID}:${GROUP_ID}"
-        ports:
-            - "9090:9090"
-        volumes:
-            - ${NOMER_DIR}:/.nomer
+    # nomer:
+    #     build:
+    #       context: ${HOME}/workspace/pynomer
+    #       #context: https://github.com/nleguillarme/pynomer.git
+    #       dockerfile: Dockerfile.server
+    #     image: pynomer-server
+    #     user: "${USER_ID}:${GROUP_ID}"
+    #     ports:
+    #         - "9090:9090"
+    #     volumes:
+    #         - ${NOMER_DIR}:/.nomer
+
+    # nomer:
+    #     build:
+    #       context: ${HOME}/workspace/pynomer
+    #       #context: https://github.com/nleguillarme/pynomer.git
+    #       dockerfile: Dockerfile
+    #     image: pynomer
+    #     user: "${USER_ID}:${GROUP_ID}"
+    #     ports:
+    #         - "9090:9090"
+    #     volumes:
+    #         - ${NOMER_DIR}:/.nomer
 
     postgres:
         image: postgres:9.6
@@ -103,7 +104,7 @@ services:
         depends_on:
             - postgres
             - rdfox
-            - nomer
+            # - nomer
         environment:
             - AIRFLOW__CORE__EXECUTOR=LocalExecutor
             - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True
@@ -115,6 +116,7 @@ services:
             - AIRFLOW__WEBSERVER__AUTHENTICATE=False
             - CONFIG_DIR=${CONFIG_DIR}
             - USER_UID=${USER_ID}
+            - NOMER_DIR=${NOMER_DIR}
             #- AIRFLOW__CORE__FERNET_KEY=${FERNET_KEY}"
         volumes:
             - ${CONFIG_DIR}:${CONFIG_DIR}

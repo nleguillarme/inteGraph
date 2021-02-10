@@ -1,0 +1,6 @@
+dstore create biodivgraph-test par-complex-nn persist-ds file
+active biodivgraph-test
+import stwo_rdfox.owl
+import ncbitaxon.ttl
+import rules.dlog
+import stwo_rules.dlog

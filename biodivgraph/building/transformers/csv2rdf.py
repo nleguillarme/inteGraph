@@ -203,7 +203,7 @@ class CSV2RDF(Transformer):
 
     # Merge RDF graphs
     def merge(self, f_in_list, f_out, **kwargs):
-        g = ConjunctiveGraph(identifier=self.cfg.graph_uri)
+        g = Graph()  # ConjunctiveGraph(identifier=self.cfg.graph_uri)
         n = 0
         for f_in in f_in_list:
             self.logger.info("Merge graph {}".format(f_in))
@@ -221,7 +221,7 @@ class CSV2RDF(Transformer):
                     new_o = BNode(value="{}_{}_{}".format(self.cfg.internal_id, n, o))
                 g.add((new_s, p, new_o))
             n += 1
-        g.serialize(destination=f_out, format="nquads")
+        g.serialize(destination=f_out, format="ntriples")
 
     def get_path_to_input_data(self):
         dir = self.get_fetched_data_dir()

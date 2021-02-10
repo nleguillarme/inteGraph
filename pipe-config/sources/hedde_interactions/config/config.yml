@@ -1,4 +1,4 @@
-internal_id : test.csv
+internal_id : hedde.interactions
 properties : tab.properties
 
 # Dataset location : one of (file_location, http_endpoint, sparql_endpoint)
@@ -8,8 +8,8 @@ file_location : "file://$CONFIG_DIR/sources/test_csv/data/KB_v2.xls"
 data_format : "csv"
 
 num_processes : 8
-source_root_dir : "$CONFIG_DIR/sources/test_csv"
+source_root_dir : "$CONFIG_DIR/sources/hedde_interactions"
 
 scheduleInterval : "@once"
 
-graph_uri : https://leca.osug.fr/biodivgraph-test/test.csv
+graph_uri : https://leca.osug.fr/biodivgraph-test/hedde.interactions

@@ -6,6 +6,9 @@ import docker
 import re
 from docker.errors import NotFound, APIError
 from pynomer.client import NomerClient
+from io import StringIO
+import sys
+import numpy as np
 
 """
 https://github.com/globalbioticinteractions/globalbioticinteractions/wiki/Taxonomy-Matching
@@ -45,240 +48,184 @@ class TaxonomicEntityMapper:
         self.scrubbing_matcher = "globi-correct"
         self.wikidata_id_matcher = "wikidata-taxon-id-web"
 
-        host = "localhost" if self.config.run_on_localhost else "nomer"
-        self.client = NomerClient(base_url=f"http://{host}:9090/")  # docker.from_env()
-        # self.pynomer_image = self.client.images.get("pynomer:latest")
+        self.client = docker.from_env()
+        self.nomer_image = self.client.images.get("pynomer:latest")
+        self.nomer_cache_dir = os.getenv("NOMER_DIR")
 
-    def run_pynomer_append(self, name, id, matcher):
-        return self.client.append(
-            query=f"{id}\t{name}", matcher=matcher, p=None, o="tsv"
+    def run_nomer_container(self, query, matcher):
+        volume = {
+            os.path.abspath(self.nomer_cache_dir): {"bind": "/.nomer", "mode": "rw"},
+        }
+        self.logger.debug(f"run_nomer_container : mount volume {volume}")
+
+        append_command = f"pynomer append {query} -m {matcher} -e"
+        self.logger.debug(f"run_nomer_container : command {append_command}")
+
+        return self.client.containers.run(
+            self.nomer_image,
+            append_command,
+            volumes=volume,
+            remove=False,
         )
-        # volume = {
-        #     os.path.abspath("~/.biodivgraph/nomer"): {"bind": "/nomer", "mode": "rw"}
-        # }
-        # append_command = (
-        #     f'pynomer append -p /nomer/properties "{id}\t{name}" -m {matcher} -e -o tsv'
-        # )
-        # return self.client.containers.run(
-        #     self.pynomer_image, append_command, volumes=volume, remove=False
-        # )
 
-    def scrub_taxname(self, name):
-        name = name.split(" sp. ")[0]
-        name = name.split(" ssp. ")[0]
-        name = name.strip()
-        return " ".join(name.split())
+    def id_to_target_id(self, df, id_column, matcher):
+        tgt_ids = pd.Series()
+        query = self.df_to_query(
+            df=df.drop_duplicates(subset=id_column), id_column=id_column
+        )
+        response = self.run_nomer_container(query, matcher=matcher)
+        res_df = pd.read_csv(StringIO(response.decode("utf-8")), sep="\t", header=None)
+        res_df = res_df.dropna(axis=0, subset=[3])
+        if not res_df.empty:
+            matched = res_df[
+                res_df[3].str.startswith(self.target_taxonomy)
+            ]  # Grep NCBI:
+            for index, row in df.iterrows():
+                loc = matched[0].isin([row[id_column]])
+                if loc.any():
+                    tgt_ids.at[index] = matched[loc][3].iloc[0]
+        return tgt_ids
 
-    def parse_entry(self, entry):
-        if entry[2] == "NONE":
-            return None, None, None
-        taxonomy = entry[3].split(":")[0]
-        uri = entry[-1]
-        taxid = entry[3]
-        return taxid, taxonomy, uri
+    def name_to_target_id(self, df, name_column, matcher):
+        tgt_ids = pd.Series()
+        query = self.df_to_query(
+            df=df.drop_duplicates(subset=name_column), name_column=name_column
+        )
+        response = self.run_nomer_container(query, matcher=matcher)
+        res_df = pd.read_csv(StringIO(response.decode("utf-8")), sep="\t", header=None)
+        res_df = res_df.dropna(axis=0, subset=[3])
+        if not res_df.empty:
+            matched = res_df[
+                res_df[3].str.startswith(self.target_taxonomy)
+            ]  # Grep NCBI:
+            for index, row in df.iterrows():
+                loc = matched[1].isin([row[name_column]])
+                if loc.any():
+                    tgt_ids.at[index] = matched[loc][3].iloc[0]
+        return tgt_ids
 
-    # def get_preferred_entry(self, entries):
-    #     for entry in entries:
-    #         matched, taxid, taxonomy, uri = self.parse_entry(entry)
-    #         self.logger.debug(
-    #             f"{matched}, {taxid}, {taxonomy}, {uri}, {self.target_taxonomy}, {taxonomy == self.target_taxonomy}"
-    #         )
-    #         if matched and taxonomy == self.target_taxonomy:
-    #             return True, taxid, taxonomy, uri
-    #     return False, taxid, taxonomy, uri
+    def df_to_query(self, df, id_column=None, name_column=None):
+        query_df = pd.DataFrame()
+        query_df["id"] = df[id_column] if id_column is not None else np.nan
+        query_df["name"] = df[name_column] if name_column is not None else np.nan
+        query = query_df.to_csv(sep="\t", header=False, index=False)
+        query = query.strip("\n")
+        query = query.replace("\t", "\\t")
+        query = query.replace("\n", "\\n")
+        return f'"{query}"'
 
-    def parse_tsv_result(self, result):
-        if not result:
-            raise ValueError("Nomer result is {}".format(result))
-        result_str = result  # .decode("utf-8")
-        match = False
-        for line in result_str.splitlines():
-            if re.search(self.target_taxonomy, line):
-                self.logger.debug(
-                    f"Found entry for target taxo {self.target_taxonomy} : {line}"
-                )
-                match = True
-                break
-        entry = line.strip(" ").rstrip("\t").split("\t")
-        taxid, taxonomy, uri = self.parse_entry(entry)
-        return match, taxid, taxonomy, uri
+    def map(self, df, id_column, name_column):
+        tgt_id_series = pd.Series(np.nan, index=range(df.shape[0]))
 
-        # entries = result_str.split("\n")
-        # entries = [entry.strip(" ").rstrip("\t").split("\t") for entry in entries]
-        # entries = [entry for entry in entries if len(entry) > 1]
-        # if len(entries) < 1:
-        #     raise ValueError("Nomer result is an empty string")
-        # return self.get_preferred_entry(entries)
-
-    def get_taxid_from_name(self, name):
         self.logger.debug(
-            "Match {} in target taxo {}".format(name, self.target_taxonomy)
+            f"Map ids from {id_column} column to target taxo {self.target_taxonomy}"
         )
-        matched, taxid, taxonomy, uri = self.parse_tsv_result(
-            self.run_pynomer_append(name=name, id="", matcher=self.cache_matcher)
-        )
-        if not matched:  # Look for taxid using external APIs
-            matched, taxid, taxonomy, uri = self.parse_tsv_result(
-                self.run_pynomer_append(name=name, id="", matcher=self.enrich_matcher)
+
+        if self.source_taxonomy:
+            df[id_column] = df.apply(
+                lambda row: f"{self.source_taxonomy}:" + str(row[id_column])
+                if not str(row[id_column]).startswith(self.source_taxonomy)
+                else row[id_column],
+                axis=1,
             )
-        return matched, taxid, taxonomy, uri
 
-    def get_taxid_in_target_taxo(self, taxid):
+        tgt_ids = self.id_to_target_id(df, id_column, matcher=self.wikidata_id_matcher)
+        found = df.index.isin(tgt_ids.index)
         self.logger.debug(
-            "Match {} in target taxo {}".format(taxid, self.target_taxonomy)
+            f"Found {found.sum()}/{df.shape[0]} ids in target taxo {self.target_taxonomy}"
         )
-        return self.parse_tsv_result(
-            self.run_pynomer_append(name="", id=taxid, matcher=self.wikidata_id_matcher)
-        )
+        df_not_found = df[~found]
+        tgt_id_series.loc[tgt_ids.index] = tgt_ids
 
-    def map(self, name="", taxid=""):
-        if (
-            taxid != ""
-            and self.source_taxonomy
-            and self.source_taxonomy not in str(taxid)
-        ):
-            taxid = self.source_taxonomy + ":{}".format(taxid)
-        while True:
-            try:
-                self.logger.info(
-                    "Match ({}, {}) in target taxo {}".format(
-                        name, taxid, self.target_taxonomy
-                    )
+        if not df_not_found.empty:
+            self.logger.debug(
+                f"Map names from {name_column} column to target taxo {self.target_taxonomy} using {self.cache_matcher}"
+            )
+            tgt_ids = self.name_to_target_id(
+                df_not_found, name_column, matcher=self.cache_matcher
+            )
+            found = df_not_found.index.isin(tgt_ids.index)
+            self.logger.debug(
+                f"Found {found.sum()}/{df_not_found.shape[0]} ids in target taxo {self.target_taxonomy}"
+            )
+            df_not_found = df_not_found[~found]
+            tgt_id_series.loc[tgt_ids.index] = tgt_ids
+
+            if not df_not_found.empty:
+                self.logger.debug(
+                    f"Map names from {name_column} column to target taxo {self.target_taxonomy} using {self.enrich_matcher}"
                 )
+                tgt_ids = self.name_to_target_id(
+                    df_not_found, name_column, matcher=self.enrich_matcher
+                )
+                found = df_not_found.index.isin(tgt_ids.index)
+                self.logger.debug(
+                    f"Found {found.sum()}/{df_not_found.shape[0]} ids in target taxo {self.target_taxonomy}"
+                )
+                df_not_found = df_not_found[~found]
+                tgt_id_series.loc[tgt_ids.index] = tgt_ids
+        return tgt_id_series
 
-                matched = False
-                # If we know the id in the source taxo, use wikidata matcher
-                # to find the corresponding id in the target taxo
-                if taxid != "":
-                    matched, _, _, uri = self.get_taxid_in_target_taxo(taxid)
-                    if not matched:
-                        self.logger.debug(
-                            "No match for {} in target taxo {}".format(
-                                taxid, self.target_taxonomy
-                            )
-                        )
+    # def scrub_taxname(self, name):
+    #     name = name.split(" sp. ")[0]
+    #     name = name.split(" ssp. ")[0]
+    #     name = name.strip()
+    #     return " ".join(name.split())
 
-                # If no match from id, try to get taxid from name
-                if not matched:
-                    matched, taxid, _, uri = self.get_taxid_from_name(name)
-                    if not matched:
-                        self.logger.debug(
-                            "No match for {} in target taxo {}".format(
-                                name, self.target_taxonomy
-                            )
-                        )
-
-                # No match in the target taxo, but a match in another taxo -> use wikidata matcher
-                if not matched and taxid:
-                    self.logger.debug("Match for {} : {}".format(name, taxid))
-                    self.logger.debug(
-                        "Match {} in target taxo {}".format(taxid, self.target_taxonomy)
-                    )
-                    matched, _, _, uri = self.get_taxid_in_target_taxo(taxid)
-                    if not matched:
-                        self.logger.debug(
-                            "No match for {} in target taxo {}".format(
-                                taxid, self.target_taxonomy
-                            )
-                        )
-
-                if not matched:
-                    self.logger.info(
-                        "No match for taxon ({}, {}) in target taxonomy {}".format(
-                            name, taxid, self.target_taxonomy
-                        )
-                    )
-                else:
-                    self.logger.info(
-                        "Matching result for taxon ({}, {}) in target taxonomy {} : {}".format(
-                            name, taxid, self.target_taxonomy, uri
-                        )
-                    )
-            except ValueError as e:
-                self.logger.error(e)
-                continue
-            break
-        return {"type": "uri", "value": uri}
+    # def parse_entry(self, entry):
+    #     if entry[2] == "NONE":
+    #         return None, None, None
+    #     taxonomy = entry[3].split(":")[0]
+    #     uri = entry[-1]
+    #     taxid = entry[3]
+    #     return taxid, taxonomy, uri
 
 
 class TaxonomicMapper:
     def __init__(self, config):
         self.logger = logging.getLogger(__name__)
         self.config = config
-        for column_config in self.config.columns:
-            column_config.run_on_localhost = (
-                self.config.run_on_localhost
-                if "run_on_localhost" in self.config
-                else False
-            )
+        # for column_config in self.config.columns:
+        #     column_config.run_on_localhost = (
+        #         self.config.run_on_localhost
+        #         if "run_on_localhost" in self.config
+        #         else False
+        #     )
 
     def map(self, df):
-        self.logger.info("Start mapping taxonomic entities")
 
         for column_config in self.config.columns:
+            self.logger.info(
+                f"Map {df.shape[0]} taxons from columns ({column_config.id_column},{column_config.name_column}) to target taxo {column_config.target_taxonomy}"
+            )
             mapper = TaxonomicEntityMapper(column_config)
 
-            colnames = []
-            if "id_column" not in column_config:
-                column_config.id_column = None
-            else:
-                colnames += [column_config.id_column]
+            src_id_series = df[column_config.id_column]
 
-            if "name_column" not in column_config:
-                column_config.name_column = None
-            else:
-                colnames += [column_config.name_column]
-
-            map = self.map_entities(
-                entities=df[colnames],
+            tgt_id_series = mapper.map(
+                df,
                 id_column=column_config.id_column,
                 name_column=column_config.name_column,
-                mapper=mapper,
             )
 
-            df[column_config.uri_column] = pd.Series(
-                list(map.values()), index=list(map.keys())
+            nb_found = tgt_id_series.count()
+            self.logger.info(
+                f"Found {nb_found}/{df.shape[0]} ids in target taxo {column_config.target_taxonomy}"
             )
+
+            # ids_to_uri
+            tgt_id_series = tgt_id_series.apply(
+                lambda id: "http://purl.obolibrary.org/obo/NCBITaxon_{}".format(
+                    id.strip("NCBI:")
+                )
+                if pd.notnull(id)
+                else id
+            )
+
+            df[column_config.uri_column] = tgt_id_series
+            df[column_config.id_column] = src_id_series
 
         uri_colnames = [
             column_config.uri_column for column_config in self.config.columns
         ]
-        # matched_df = df.dropna(subset=uri_colnames)
-        # not_matched_df = df[df[uri_colnames].isnull().any(axis=1)]
-
-        return df, uri_colnames  # matched_df, not_matched_df
-
-    def map_entities(self, entities, id_column, name_column, mapper):
-        unique = entities.drop_duplicates()
-        self.logger.info(
-            "Start mapping {}/{} unique taxonomic entities".format(
-                unique.shape[0], entities.shape[0]
-            )
-        )
-        unique_entity_map = {}
-        for index, row in unique.iterrows():
-            name, taxid = self.get_name_and_taxid(row, id_column, name_column)
-            if taxid == "" and name == "":
-                raise ValueError
-
-            res = mapper.map(name=name, taxid=taxid)
-            if res["type"] == "uri":
-                unique_entity_map[(taxid, name)] = (
-                    res["value"] if res["value"] else None
-                )
-
-        entity_map = {}
-        for index, row in entities.iterrows():
-            name, taxid = self.get_name_and_taxid(row, id_column, name_column)
-            entity_map[index] = unique_entity_map[(taxid, name)]
-
-        return entity_map
-
-    def get_name_and_taxid(self, row, id_column, name_column):
-        taxid = row[id_column] if (id_column and not pd.isnull(row[id_column])) else ""
-        name = (
-            row[name_column]
-            if (name_column and not pd.isnull(row[name_column]))
-            else ""
-        )
-        return name, taxid
+        return df, uri_colnames

@@ -36,7 +36,9 @@ class RDFoxLoader(Loader):
             f"http://{self.cfg.rdfox_role}:{self.cfg.rdfox_password}"
             f"@{self.cfg.rdfox_host}:{self.cfg.rdfox_port}"
         )
-        self.headers = {"Content-Type": "application/n-quads"}
+        self.headers = {
+            "Content-Type": "application/n-triples"
+        }  # application/n-quads"}
 
         self.cfg.graph_dir = os.path.join(self.cfg.output_dir, "graph")
         self.cfg.shared_dir_for_source = os.path.join(
@@ -79,7 +81,9 @@ class RDFoxLoader(Loader):
         return False
 
     def load_data(self, **kwargs):
-        for file in glob.glob(os.path.join(self.get_split_dir(), "*.nq")):
+        for file in glob.glob(
+            os.path.join(self.get_graph_dir(), "*.nq")
+        ):  # self.get_split_dir(), "*.nq")):
             self.logger.info(
                 f"Load file {file} to datastore {self.cfg.rdfox_datastore}"
             )

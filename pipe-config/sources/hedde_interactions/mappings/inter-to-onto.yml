@@ -14,10 +14,6 @@ mappings:
     s: null #data_item:$(id)
     po:
       - [rdf:type, obo:IAO_0000027~iri] # IAO_0000027 : 'data item'
-      - p: dwc:associatedReferences
-        o:
-          value: $(references)
-          datatype: xsd:string
       - p: http://purl.obolibrary.org/obo/IAO_0000136 # IAO_0000136 : 'is about'
         o:
           mapping: interactions

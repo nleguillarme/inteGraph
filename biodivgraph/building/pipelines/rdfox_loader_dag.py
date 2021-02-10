@@ -73,6 +73,7 @@ class RDFoxLoaderDAG(DAGTemplate):
         )
 
         sensor >> branch >> [clean, end]
-        clean >> split >> load >> end
+        # clean >> split >> load >> end
+        clean >> load >> end
 
         return dag
