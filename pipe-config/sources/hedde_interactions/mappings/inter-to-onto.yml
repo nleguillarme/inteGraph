@@ -92,23 +92,23 @@ mappings:
               - [str1, $(obj)~iri]
               - [str2, $(iri)~iri]
 
-  src_organism:
-    sources:
-      - access: s.tsv
-        referenceFormulation: csv
-        delimiter: "\t"
-    s: null
-    po:
-      - [rdf:type, obo:CARO_0001010~iri] # CARO_0001010 : 'organism or virus or viroid'
-      - [obo:BCO_0000087, $(sub)~iri] # BCO_0000087 : 'member of taxon'
-      - p: $(pred)
-        o:
-          mapping: tgt_tax
-          condition:
-            function: equal
-            parameters:
-              - [str1, $(id)]
-              - [str2, $(id)]
+  # src_organism:
+  #   sources:
+  #     - access: s.tsv
+  #       referenceFormulation: csv
+  #       delimiter: "\t"
+  #   s: null
+  #   po:
+  #     - [rdf:type, obo:CARO_0001010~iri] # CARO_0001010 : 'organism or virus or viroid'
+  #     - [obo:BCO_0000087, $(sub)~iri] # BCO_0000087 : 'member of taxon'
+  #     - p: $(pred)
+  #       o:
+  #         mapping: tgt_tax
+  #         condition:
+  #           function: equal
+  #           parameters:
+  #             - [str1, $(id)]
+  #             - [str2, $(id)]
 
   taxon:
     sources:

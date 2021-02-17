@@ -9,6 +9,7 @@ from pynomer.client import NomerClient
 from io import StringIO
 import sys
 import numpy as np
+from pandas.errors import EmptyDataError
 
 """
 https://github.com/globalbioticinteractions/globalbioticinteractions/wiki/Taxonomy-Matching
@@ -68,40 +69,148 @@ class TaxonomicEntityMapper:
             remove=False,
         )
 
+    def parse_nomer_response(self, response):
+        try:
+            res_df = pd.read_csv(
+                StringIO(response.decode("utf-8")), sep="\t", header=None
+            )
+        except EmptyDataError as e:
+            self.logger.error(e)
+            return False, None
+        else:
+            return True, res_df
+
+    def ask_nomer(self, query, matcher):
+        while True:
+            response = self.run_nomer_container(query, matcher=matcher)
+            not_empty, res_df = self.parse_nomer_response(response)
+            if not_empty:
+                return res_df
+            else:
+                self.logger.debug(f"Nomer raised EmptyDataError : try again.")
+
+    def get_best_match(self, src_taxid, src_name, df):
+        if df.shape[0] == 1:
+            return df[3].iloc[0]
+        else:
+            self.logger.debug(
+                f"Found multiple matches for taxon {src_name}: get best match"
+            )
+            query = f'"{src_taxid}\\t"'  # f"{src_taxid}\t"
+            # Get lineage from source taxid using cache matcher
+            res_df = self.ask_nomer(query, matcher=self.cache_matcher)
+            # print(res_df, res_df[2].iloc[0])
+            if (
+                res_df[2].iloc[0] != "SAME_AS"
+            ):  # If not found, try again using enrich matcher
+                res_df = self.ask_nomer(query, matcher="globi-enrich")
+            # print(res_df, res_df[2].iloc[0])
+            if res_df[2].iloc[0] == "SAME_AS":
+                src_lineage = res_df[7].iloc[0].split(" | ")
+            else:
+                self.logger.debug(
+                    f"Could not get lineage from taxid {src_taxid}: cannot find best match"
+                )
+                return None
+
+            tgt_lineages = [
+                {
+                    "index": index,
+                    "lineage": [x.strip(" ") for x in row[7].split("|") if x],
+                }
+                for index, row in df.iterrows()
+            ]
+
+            if len(set([",".join(tgt["lineage"]) for tgt in tgt_lineages])) == 1:
+                best_index = tgt_lineages[0]["index"]
+                best_match = df[3].loc[best_index]
+                self.logger.debug(
+                    f"Found multiple matches with same lineage for taxon {src_name}: {best_match}"
+                )
+            else:
+                similarities = [
+                    1.0
+                    * len(set(src_lineage).intersection(tgt["lineage"]))
+                    / len(set(src_lineage))
+                    for tgt in tgt_lineages
+                ]
+                # print(tgt_lineages, similarities)
+                max_sim = max(similarities)
+                max_indexes = [
+                    i for i, sim in enumerate(similarities) if sim == max_sim
+                ]
+                if len(max_indexes) > 1:
+                    self.logger.debug(
+                        f"Found multiple best matches with similarity {max_sim:.2f}: cannot find best match"
+                    )
+                    return None
+
+                best_index = tgt_lineages[max_indexes[0]]["index"]
+                best_match = df[3].loc[best_index]
+                self.logger.debug(
+                    f"Found best match with similarity {max_sim:.2f} for taxon {src_name}: {best_match}"
+                )
+            return best_match
+
     def id_to_target_id(self, df, id_column, matcher):
         tgt_ids = pd.Series()
         query = self.df_to_query(
             df=df.drop_duplicates(subset=id_column), id_column=id_column
         )
-        response = self.run_nomer_container(query, matcher=matcher)
-        res_df = pd.read_csv(StringIO(response.decode("utf-8")), sep="\t", header=None)
+        res_df = self.ask_nomer(query, matcher=matcher)
         res_df = res_df.dropna(axis=0, subset=[3])
         if not res_df.empty:
             matched = res_df[
                 res_df[3].str.startswith(self.target_taxonomy)
-            ]  # Grep NCBI:
+            ]  # Grep "NCBI:"
             for index, row in df.iterrows():
                 loc = matched[0].isin([row[id_column]])
                 if loc.any():
                     tgt_ids.at[index] = matched[loc][3].iloc[0]
         return tgt_ids
 
-    def name_to_target_id(self, df, name_column, matcher):
+    def name_to_target_id(self, df, name_column, id_column, matcher):
         tgt_ids = pd.Series()
         query = self.df_to_query(
             df=df.drop_duplicates(subset=name_column), name_column=name_column
         )
-        response = self.run_nomer_container(query, matcher=matcher)
-        res_df = pd.read_csv(StringIO(response.decode("utf-8")), sep="\t", header=None)
+        res_df = self.ask_nomer(query, matcher=matcher)
         res_df = res_df.dropna(axis=0, subset=[3])
+
+        name_id_map = {}
         if not res_df.empty:
             matched = res_df[
                 res_df[3].str.startswith(self.target_taxonomy)
-            ]  # Grep NCBI:
-            for index, row in df.iterrows():
+            ]  # Grep "NCBI:"
+
+            df_names = df.drop_duplicates(subset=name_column)
+            for index, row in df_names.iterrows():
                 loc = matched[1].isin([row[name_column]])
                 if loc.any():
-                    tgt_ids.at[index] = matched[loc][3].iloc[0]
+                    best_match = self.get_best_match(
+                        src_taxid=row[id_column],
+                        src_name=row[name_column],
+                        df=matched[loc].drop_duplicates(),
+                    )
+                    if best_match:
+                        name_id_map[row[name_column]] = best_match
+
+            for index, row in df.iterrows():
+                name = row[name_column]
+                if name in name_id_map:
+                    tgt_ids.at[index] = name_id_map[name]
+                # loc = matched[1].isin(
+                #     [row[name_column]]
+                # )  # Find all matches for a taxon name
+                # if loc.any():
+                #     best_match = self.get_best_match(
+                #         src_taxid=row[id_column],
+                #         src_name=row[name_column],
+                #         df=matched[loc].drop_duplicates(),
+                #     )
+                #     if best_match:
+                #         tgt_ids.at[index] = best_match
+                # tgt_ids.at[index] = matched[loc][3].iloc[0]
         return tgt_ids
 
     def df_to_query(self, df, id_column=None, name_column=None):
@@ -142,7 +251,7 @@ class TaxonomicEntityMapper:
                 f"Map names from {name_column} column to target taxo {self.target_taxonomy} using {self.cache_matcher}"
             )
             tgt_ids = self.name_to_target_id(
-                df_not_found, name_column, matcher=self.cache_matcher
+                df_not_found, name_column, id_column, matcher=self.cache_matcher
             )
             found = df_not_found.index.isin(tgt_ids.index)
             self.logger.debug(
@@ -156,7 +265,7 @@ class TaxonomicEntityMapper:
                     f"Map names from {name_column} column to target taxo {self.target_taxonomy} using {self.enrich_matcher}"
                 )
                 tgt_ids = self.name_to_target_id(
-                    df_not_found, name_column, matcher=self.enrich_matcher
+                    df_not_found, name_column, id_column, matcher=self.enrich_matcher
                 )
                 found = df_not_found.index.isin(tgt_ids.index)
                 self.logger.debug(
