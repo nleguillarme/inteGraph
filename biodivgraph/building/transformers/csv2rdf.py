@@ -3,7 +3,7 @@ from ..core import Transformer
 # from ..linking import TripleLinkingEngine
 from ..mapping.rml_mapper import RMLMappingEngine
 from ..mapping.taxonomic_mapper import TaxonomicMapper
-from ..mapping.vocabulary_mapper import VocabularyMapper
+from ..mapping.ontology_mapper import OntologyMapper
 
 from ...utils.csv_helper import *
 from ...utils.config_helper import read_config
@@ -57,12 +57,21 @@ class CSV2RDF(Transformer):
 
         # Create interaction mapper
         self.entity_mapper = None
-        if "entity_mapper_conf" in self.properties:
-            for column_config in self.properties.entity_mapper_conf.columns:
-                column_config.mapping_file = os.path.join(
-                    self.cfg.source_root_dir, column_config.mapping_file
-                )
-            self.entity_mapper = VocabularyMapper(self.properties.entity_mapper_conf)
+        if (
+            "entity_mapper_conf" in self.properties
+            and "ontology_file" in self.properties.entity_mapper_conf
+        ):
+            self.properties.entity_mapper_conf.ontology_file = os.path.join(
+                self.cfg.source_root_dir,
+                self.properties.entity_mapper_conf.ontology_file,
+            )
+            # for column_config in self.properties.entity_mapper_conf.columns:
+            #     column_config.mapping_file = os.path.join(
+            #         self.cfg.source_root_dir, column_config.mapping_file
+            #     )
+            self.entity_mapper = OntologyMapper(self.properties.entity_mapper_conf)
+            self.entity_mapper.load_ontology()
+            # VocabularyMapper(self.properties.entity_mapper_conf)
 
         # Create triplifier
         self.properties.triplifier_conf.ontological_mapping_file = os.path.join(

@@ -1,5 +1,4 @@
-@PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> . 
-@PREFIX obo: <http://purl.obolibrary.org/obo/> . 
+@PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@PREFIX obo: <http://purl.obolibrary.org/obo/> .
 
-[?x, obo:BCO_0000087, ?z] :- [?x, obo:BCO_0000087, ?y], [?y, rdfs:subClassOf, ?z] .
 [?x, a, ?z] :- [?x, a, ?y], [?y, rdfs:subClassOf, ?z] .

@@ -4,7 +4,7 @@ properties : tab.properties
 # Dataset location : one of (file_location, http_endpoint, sparql_endpoint)
 #file_location : "file://$CONFIG_DIR/sources/test_csv/data/1.interactions_list_sample.csv"
 
-file_location : "file://$CONFIG_DIR/sources/test_csv/data/KB_v2.xls"
+file_location : "file://$CONFIG_DIR/sources/hedde_interactions/data/KB_v2.xls"
 data_format : "csv"
 
 num_processes : 8
