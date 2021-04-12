@@ -32,7 +32,7 @@ class CSV2RDFDAG(DAGTemplate):
         sensor = FileSensor(
             task_id=self.get_dag_id() + "." + "data_file_sensor",
             poke_interval=30,
-            filepath=self.transformer.get_fetched_data_dir(),
+            filepath=self.transformer.get_ready_to_process_data_dir(),
             dag=dag,
         )
 
@@ -71,26 +71,8 @@ class CSV2RDFDAG(DAGTemplate):
 
             f_in = self.transformer.get_path_to_chunk(chunk_num)
             f_out = self.transformer.get_path_to_mapped_chunk(chunk_num)
-            f_not_matched = self.transformer.get_path_to_invalid_data(chunk_num)
-
-            drop_not_matched = True
-
-            if self.transformer.with_other_entities_mapping():
-                map_other = PythonOperator(
-                    task_id=self.get_dag_id()
-                    + "."
-                    + "map_other_entities_{}".format(chunk_num),
-                    python_callable=self.transformer.map_other_entities,
-                    provide_context=True,
-                    op_kwargs={
-                        "f_in": f_out,
-                        "f_out": f_out,
-                        "drop_not_matched": drop_not_matched,
-                        "f_not_matched": f_not_matched,
-                    },
-                    dag=dag,
-                )
-                drop_not_matched = False
+            f_na = self.transformer.get_path_to_invalid_data(chunk_num)
+            f_taxon = self.transformer.get_path_to_taxon_data(chunk_num)
 
             if self.transformer.with_taxonomic_entities_mapping():
                 map_taxo = PythonOperator(
@@ -102,21 +84,52 @@ class CSV2RDFDAG(DAGTemplate):
                     op_kwargs={
                         "f_in": f_in,
                         "f_out": f_out,
-                        "drop_not_matched": drop_not_matched,
-                        "f_not_matched": f_not_matched,
+                        "f_taxon": f_taxon,
                     },
                     dag=dag,
                 )
 
+            if self.transformer.with_other_entities_mapping():
+                map_other = PythonOperator(
+                    task_id=self.get_dag_id()
+                    + "."
+                    + "map_other_entities_{}".format(chunk_num),
+                    python_callable=self.transformer.map_other_entities,
+                    provide_context=True,
+                    op_kwargs={
+                        "f_in": f_out,
+                        "f_out": f_out,
+                    },
+                    dag=dag,
+                )
+
+            drop_na = PythonOperator(
+                task_id=self.get_dag_id() + "." + "drop_na_{}".format(chunk_num),
+                python_callable=self.transformer.drop_na,
+                provide_context=True,
+                op_kwargs={
+                    "f_in": f_out,
+                    "f_out": f_out,
+                    "f_na": f_na,
+                },
+                dag=dag,
+            )
+
             f_in = f_out
             f_out = self.transformer.get_path_to_triples(chunk_num)
+            f_taxon = self.transformer.get_path_to_taxon_data(chunk_num)
             wdir = self.transformer.get_mapping_working_dir(chunk_num)
 
             triplify = PythonOperator(
                 task_id=self.get_dag_id() + "." + "triplify_{}".format(chunk_num),
                 python_callable=self.transformer.triplify,
                 provide_context=True,
-                op_kwargs={"f_in": f_in, "f_out": f_out, "wdir": wdir},
+                op_kwargs={
+                    "f_in": f_in,
+                    "f_out": f_out,
+                    "f_taxon": f_taxon,
+                    "wdir": wdir,
+                },
                 dag=dag,
             )
 
@@ -124,13 +137,13 @@ class CSV2RDFDAG(DAGTemplate):
                 self.transformer.with_taxonomic_entities_mapping()
                 and self.transformer.with_other_entities_mapping()
             ):
-                split >> map_taxo >> map_other >> triplify >> merge
+                split >> map_taxo >> map_other >> drop_na >> triplify >> merge
             elif self.transformer.with_taxonomic_entities_mapping():
-                split >> map_taxo >> triplify >> merge
+                split >> map_taxo >> drop_na >> triplify >> merge
             elif self.transformer.with_other_entities_mapping():
-                split >> map_other >> triplify >> merge
+                split >> map_other >> drop_na >> triplify >> merge
             else:
-                split >> triplify >> merge
+                split >> drop_na >> triplify >> merge
 
         sensor >> clean >> split
         split >> end  # In case chunks_count is zero

@@ -7,4 +7,4 @@ def read_config(filename):
     if os.path.exists(filename):
         config = Box.from_yaml(filename=filename, Loader=yaml.FullLoader)
         return config
-    raise FileNotFoundException("f{filename} not found.")
+    raise FileNotFoundError(f"{filename} not found.")

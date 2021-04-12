@@ -6,12 +6,12 @@ init:
 		pip install -r requirements.txt
 		python setup.py install
 
-test:
-		python -m pytest tests
+test_dags:
+		python -m pytest tests/test_dags.py
 
 build:
-		# docker build https://github.com/RMLio/yarrrml-parser.git -t yarrrml-parser:latest
-		# docker build https://github.com/RMLio/rmlmapper-java.git -t rmlmapper:latest
+		docker build https://github.com/RMLio/yarrrml-parser.git -t yarrrml-parser:latest
+		docker build https://github.com/RMLio/rmlmapper-java.git -t rmlmapper:latest
 		# docker build https://github.com/stain/rdfsplit.git -t rdfsplit:latest
 		# docker build nomer
 		#Fork rdfsplit and change Dockerfile, build from our fork
@@ -32,6 +32,10 @@ up:
 
 down:
 		docker-compose -f docker-compose-LocalExecutor.yml down
+
+test:
+		mkdir -p "${NOMER_DIR}"
+		BDG_MODE="test" CONFIG_DIR="$(shell pwd)/pipe-config" USER_ID="${USER_ID}" GROUP_ID="${GROUP_ID}" NOMER_DIR="${NOMER_DIR}" docker-compose -f docker-compose-LocalExecutor.yml up webserver
 
 clean-test-datastore:
 	curl -i -X PATCH admin:leca2019@localhost:12110/datastores/biodivgraph-test?command=clear

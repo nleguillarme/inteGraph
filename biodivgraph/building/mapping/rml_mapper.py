@@ -31,10 +31,6 @@ class RMLMappingEngine:
         self.mapper_image = self.client.images.get("rmlmapper:latest")
         self.parser_image = self.client.images.get("yarrrml-parser:latest")
 
-        # # Sources directory required for docker in docker
-        # self.dind_sources_config_dir = os.getenv("DIND_SOURCES_CONFIG_DIR")
-        # if not self.dind_sources_config_dir:
-        #     raise MissingEnvironmentVariable("DIND_SOURCES_CONFIG_DIR does not exist")
         self.path_to_yaml_rules = self.cfg.ontological_mapping_file
         self.path_to_rml_rules = None
 
@@ -57,9 +53,6 @@ class RMLMappingEngine:
     def run_rmlmapper_container(self, working_dir, rml_filename, rdf_filename):
         remote_rml_path = os.path.join("/data", rml_filename)
         remote_rdf_path = os.path.join("/data", rdf_filename)
-
-        # working_dir = "test_csv/output/triples/hedde.interactions_0"
-        # dind_path = os.path.join(self.dind_sources_config_dir, working_dir)
 
         volume = {working_dir: {"bind": "/data", "mode": "rw"}}
         self.logger.debug(f"run_rmlmapper_container : mount volume {volume}")
@@ -101,9 +94,9 @@ class RMLMappingEngine:
             )
         return self.path_to_rml_rules
 
-    def run_mapping(self, df, wdir, f_out):
+    def run_mapping(self, df, df_taxon, wdir, f_out):
         # Convert data frame to CSV files for mapping and save them in wdir
-        self.df_to_csv(df, wdir)
+        self.df_to_csv(df, df_taxon, wdir)
 
         # Convert YARRRML rules to RML rules
         if self.path_to_rml_rules == None:
@@ -130,10 +123,9 @@ class RMLMappingEngine:
         else:
             raise FileNotFoundError(self.path_to_rml_rules)
 
-    def df_to_csv(self, df, dst):
+    def df_to_csv(self, df, df_taxon, dst):
         sep = "\t"
         os.makedirs(dst, exist_ok=True)
-
         df = df.rename(
             columns={
                 self.cfg.subject_column_name: "sub",
@@ -142,44 +134,11 @@ class RMLMappingEngine:
                 self.cfg.references_column_name: "references",
             }
         )
-
-        df["id"] = df.index
-
-        df_obj = df.loc[:, ["obj"]]
-        df_obj["id"] = df.index
-
-        df_pred = df.loc[:, ["pred"]]
-        df_pred["id"] = df.index
-
+        df["ID"] = df.index
+        df["sub"] = df["sub"].str.lower()
+        df["obj"] = df["obj"].str.lower()
         df.to_csv(os.path.join(dst, "s.tsv"), index=False, sep=sep)
-        df_pred.to_csv(os.path.join(dst, "p.tsv"), index=False, sep=sep)
-        df_obj.to_csv(os.path.join(dst, "o.tsv"), index=False, sep=sep)
-
-        df_sub_taxon = df[
-            [
-                "sub",
-                self.cfg.subject_name_column_name,
-                self.cfg.subject_rank_column_name,
-            ]
-        ].rename(
-            columns={
-                "sub": "iri",
-                self.cfg.subject_name_column_name: "scientific_name",
-                self.cfg.subject_rank_column_name: "taxon_rank",
-            }
-        )
-        df_obj_taxon = df[
-            ["obj", self.cfg.object_name_column_name, self.cfg.object_rank_column_name]
-        ].rename(
-            columns={
-                "obj": "iri",
-                self.cfg.object_name_column_name: "scientific_name",
-                self.cfg.object_rank_column_name: "taxon_rank",
-            }
-        )
-
-        df_taxon = df_sub_taxon.append(df_obj_taxon, ignore_index=True).drop_duplicates(
-            subset="iri"
-        )
-
+        df_taxon["ID"] = df_taxon.index
+        df_taxon["src_iri"] = df_taxon["src_iri"].str.lower()
+        df_taxon["tgt_iri"] = df_taxon["tgt_iri"].str.lower()
         df_taxon.to_csv(os.path.join(dst, "taxon.tsv"), index=False, sep=sep)

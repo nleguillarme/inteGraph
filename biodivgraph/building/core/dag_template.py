@@ -15,5 +15,8 @@ class DAGTemplate(ABC):
     def get_dag_id(self):
         return self.dag_id
 
+    def dummy(self, name, **kwargs):
+        self.logger.info("Dummy task {}".format(name))
+
     def end(self, **kwargs):
         self.logger.info("Ending pipeline {}".format(self.get_dag_id()))

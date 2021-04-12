@@ -117,6 +117,7 @@ services:
             - CONFIG_DIR=${CONFIG_DIR}
             - USER_UID=${USER_ID}
             - NOMER_DIR=${NOMER_DIR}
+            - BDG_MODE=${BDG_MODE}
             #- AIRFLOW__CORE__FERNET_KEY=${FERNET_KEY}"
         volumes:
             - ${CONFIG_DIR}:${CONFIG_DIR}

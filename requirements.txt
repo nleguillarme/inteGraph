@@ -17,3 +17,5 @@ requests-file==1.5.1
 pyunpack==0.2.1
 patool==1.12
 Owlready2==0.27
+beautifulsoup4==4.9.3
+fsspec

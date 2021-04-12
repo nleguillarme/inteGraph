@@ -44,7 +44,7 @@ class VocabularyMapper:
             map = {}
 
             if column_config.uri_column not in df.columns:
-                df[column_config.uri_column] = np.nan
+                df[column_config.uri_column] = None  # np.nan
 
             uris = df[column_config.uri_column]
             entities = df[df[column_config.uri_column].isnull()][

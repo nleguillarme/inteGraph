@@ -22,6 +22,8 @@ class OntologyMapper:
     def get_iri(self, entity):
         iris = self.onto.search(label=entity)
         if not iris:
+            iris = self.onto.search(label=entity.lower())
+        if not iris:
             self.logger.debug("No match for entity {}".format(entity))
             return None
         elif len(iris) == 1:
@@ -41,7 +43,7 @@ class OntologyMapper:
             map = {}
 
             if column_cfg.uri_column not in df.columns:
-                df[column_cfg.uri_column] = np.nan
+                df[column_cfg.uri_column] = None  # np.nan
 
             uris = df[column_cfg.uri_column]
             entities = df[df[column_cfg.uri_column].isnull()][column_cfg.column_name]
@@ -64,6 +66,6 @@ class OntologyMapper:
                     df[column_cfg.uri_column],
                 )
 
-        uri_colnames = [column_cfg.uri_column for column_cfg in self.cfg.columns]
+        # uri_colnames = [column_cfg.uri_column for column_cfg in self.cfg.columns]
 
-        return df, uri_colnames
+        return df  # , uri_colnames

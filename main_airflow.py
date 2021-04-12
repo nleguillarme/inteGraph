@@ -16,8 +16,7 @@ from biodivgraph.building.pipelines import WorkflowFactory
 def setup_logging(
     default_path="./logging.json", default_level=logging.INFO, env_key="LOG_CFG"
 ):
-    """ Setup logging configuration
-    """
+    """Setup logging configuration"""
     path = default_path
     value = os.getenv(env_key, None)
     if value:
@@ -35,7 +34,7 @@ def register_dag(dag):
     globals()[dag.dag_id] = dag
 
 
-def create_ETL_dag(cfg, default_args=None):
+def create_ETL_dag(cfg, default_args=None, test_mode=False):
 
     today = date.today()
     dag_name = cfg.internal_id + "_" + today.strftime("%d%m%Y")
@@ -65,11 +64,13 @@ def create_ETL_dag(cfg, default_args=None):
         task_id=transformer_id.split(".")[-1], subdag=transformer, dag=dag
     )
 
-    load = SubDagOperator(task_id=loader_id.split(".")[-1], subdag=loader, dag=dag)
-
     end = DummyOperator(task_id="end", dag=dag)
 
-    start >> extract >> transform >> load >> end
+    if not test_mode:
+        load = SubDagOperator(task_id=loader_id.split(".")[-1], subdag=loader, dag=dag)
+        start >> extract >> transform >> load >> end
+    else:
+        start >> extract >> transform >> end
 
     return dag
 
@@ -88,6 +89,8 @@ default_args = {
 
 setup_logging()
 logger = logging.getLogger(__name__)
+
+test_mode = os.getenv("BDG_MODE", default=None) == "test"
 
 # Read scheduler config file to get properties file and jobs directory
 root_dir = os.getenv("CONFIG_DIR")
@@ -120,6 +123,10 @@ sources = [
     if os.path.isdir(os.path.join(sources_dir, src_dir))
 ]
 
+with open(os.path.join(root_dir, "sources.ignore"), "r") as f:
+    ignore_sources = f.readlines()
+    ignore_sources = [src.strip() for src in ignore_sources]
+sources = [src for src in sources if src not in ignore_sources]
 logging.info(f"Found {len(sources)} integration jobs: {sources}")
 
 for source in sources:
@@ -132,4 +139,6 @@ for source in sources:
     if "internal_id" not in src_cfg:
         src_cfg.internal_id = source
     logging.info(f"Create new ETL pipeline : {src_cfg.internal_id} : {src_cfg}")
-    register_dag(create_ETL_dag(src_cfg + loader_cfg, default_args))
+    register_dag(
+        create_ETL_dag(src_cfg + loader_cfg, default_args, test_mode=test_mode)
+    )

@@ -10,7 +10,7 @@ class NoResultException(Exception):
 
 class HTTPExtractor(Extractor):
     def __init__(self):
-        Extractor.__init__(self)
+        Extractor.__init__(self, "http_extractor")
 
     def get_json_results(self, url, params={}):
         out = requests.get(url, params=params)

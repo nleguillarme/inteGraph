@@ -29,7 +29,7 @@ class WorkflowFactory:
             raise UnsupportedSourceException()
 
     def get_transformer_dag(self, config, default_args=None, parent_dag_name=None):
-        if config.data_format == "csv":
+        if config.standard_format == "csv":
             return self.get_dag_instance(
                 CSV2RDFDAG, config, default_args, parent_dag_name
             )
