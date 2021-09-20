@@ -1,0 +1,16 @@
+python-box
+requests_cache
+numpy
+requests
+requests-file
+pandas
+pytest
+rdflib
+SPARQLWrapper
+docker
+PyYAML
+pyunpack
+patool
+Owlready2
+beautifulsoup4
+fsspec

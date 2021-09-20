@@ -1,9 +1,5 @@
 version: '2.1'
 
-# volumes:
-#   sources_config:
-#     external: true
-
 services:
 
     # neo4j:
@@ -37,15 +33,33 @@ services:
     #     ports:
     #       - "8890:8890"
 
-    rdfox:
-      image: oxfordsemantic/rdfox
+    # rdfox:
+    #   image: oxfordsemantic/rdfox
+    #   volumes:
+    #     - ${PWD}/RDFox-data/RDFox.lic:/opt/RDFox/RDFox.lic
+    #     - ${PWD}/rdfox-server-directory:/home/rdfox/.RDFox
+    #   cap_drop:
+    #     - ALL
+    #   ports:
+    #     - "12110:12110"
+
+    graphdb:
+      image: ontotext/graphdb:9.8.0-free
       volumes:
-        - ${PWD}/RDFox-data/RDFox.lic:/opt/RDFox/RDFox.lic
-        - ${PWD}/rdfox-server-directory:/home/rdfox/.RDFox
-      cap_drop:
-        - ALL
+        - ${PWD}/graphdb-data:/opt/graphdb/home
+      environment:
+        GDB_JAVA_OPTS: >-
+          -Xmx12g -Xms12g
+          -Dgraphdb.home=/opt/graphdb/home
+          -Dgraphdb.workbench.importDirectory=/opt/graphdb/home/graphdb-import
+          -Dgraphdb.workbench.cors.enable=true
+          -Denable-context-index=true
+          -Dentity-pool-implementation=transactional
+          -Dhealth.max.query.time.seconds=60
+          -Dgraphdb.append.request.id.headers=true
+          -Dreuse.vars.in.subselects=true
       ports:
-        - "12110:12110"
+        - "7200:7200"
 
     # anzograph:
     #     build:
@@ -60,18 +74,6 @@ services:
     #         - "8443:8443"
     #     volumes:
     #         - ./dags_test_data/:/opt/shared-directory
-
-    # nomer:
-    #     build:
-    #       context: ${HOME}/workspace/pynomer
-    #       #context: https://github.com/nleguillarme/pynomer.git
-    #       dockerfile: Dockerfile.server
-    #     image: pynomer-server
-    #     user: "${USER_ID}:${GROUP_ID}"
-    #     ports:
-    #         - "9090:9090"
-    #     volumes:
-    #         - ${NOMER_DIR}:/.nomer
 
     # nomer:
     #     build:
@@ -94,17 +96,17 @@ services:
 
     webserver:
         build:
-          context: .
+          context: ./install_files
           dockerfile: Dockerfile.airflow
           args:
-            - DOCKER_UID=1001
+            - DOCKER_UID=${USER_ID}
             - DOCKER_GID=999
+        # user: ${USER_ID}:${GROUP_ID}
         image: custom-airflow
         restart: on-failure
         depends_on:
             - postgres
-            - rdfox
-            # - nomer
+            - graphdb
         environment:
             - AIRFLOW__CORE__EXECUTOR=LocalExecutor
             - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True
@@ -114,15 +116,18 @@ services:
             - AIRFLOW__WEBSERVER__DAG_ORIENTATION=TB
             - AIRFLOW__WEBSERVER__DAG_DEFAULT_VIEW=graph
             - AIRFLOW__WEBSERVER__AUTHENTICATE=False
-            - CONFIG_DIR=${CONFIG_DIR}
+            - INTEGRAPH__CONFIGURATION__CONFIG_DIR=${INTEGRAPH__CONFIGURATION__CONFIG_DIR}
             - USER_UID=${USER_ID}
-            - NOMER_DIR=${NOMER_DIR}
-            - BDG_MODE=${BDG_MODE}
+            - GROUP_UID=${GROUP_ID}
+            - INTEGRAPH__CONFIGURATION__NOMER_CACHE_DIR=${NOMER_DIR}
+            - INTEGRAPH__EXECUTION__TEST_MODE=${INTEGRAPH__EXECUTION__TEST_MODE}
+            - CONFIG_DIR=/opt/airflow/config
             #- AIRFLOW__CORE__FERNET_KEY=${FERNET_KEY}"
         volumes:
-            - ${CONFIG_DIR}:${CONFIG_DIR}
+            # - ${INTEGRAPH__CONFIGURATION__CONFIG_DIR}:/opt/airflow/config
+            - shared_config:/opt/airflow/config
             - ${PWD}:/opt/airflow/dags
-            - ${HOME}/.biodivgraph/logs:/opt/airflow/logs
+            - ${HOME}/.integraph/logs:/opt/airflow/logs
             - /var/run/docker.sock:/var/run/docker.sock
             - /usr/bin/docker:/usr/bin/docker
             # Uncomment to include custom plugins
@@ -135,3 +140,11 @@ services:
             interval: 30s
             timeout: 30s
             retries: 3
+
+volumes:
+  shared_config:
+    driver: local
+    driver_opts:
+        type: none
+        device: ${INTEGRAPH__CONFIGURATION__CONFIG_DIR} #NOTE needs full path (~ doesn't work)
+        o: bind

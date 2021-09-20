@@ -1,16 +1,13 @@
 from airflow import DAG
-from airflow.models import Variable
-from airflow.operators.python_operator import PythonOperator
 from airflow.operators.subdag_operator import SubDagOperator
 from airflow.operators.dummy_operator import DummyOperator
 import logging
 import os
 import json
-import glob
 from datetime import date, datetime, timedelta
 
-from biodivgraph.utils.config_helper import read_config
-from biodivgraph.building.pipelines import WorkflowFactory
+from integraph.util.config_helper import read_config
+from integraph.pipeline import PipelineFactory
 
 
 def setup_logging(
@@ -30,48 +27,42 @@ def setup_logging(
 
 
 def register_dag(dag):
-    logging.info("Register dag {}".format(dag.dag_id))
+    logging.debug("Register dag {}".format(dag.dag_id))
     globals()[dag.dag_id] = dag
 
 
-def create_ETL_dag(cfg, default_args=None, test_mode=False):
+def create_ETL_dag(
+    cfg, factory=PipelineFactory(), default_args=None, run_in_test_mode=False
+):
 
     today = date.today()
     dag_name = cfg.internal_id + "_" + today.strftime("%d%m%Y")
 
-    extractor_id, extractor = factory.get_extractor_dag(cfg, default_args, dag_name)
-    transformer_id, transformer = factory.get_transformer_dag(
-        cfg, default_args, dag_name
-    )
-    loader_id, loader = factory.get_loader_dag(cfg, default_args, dag_name)
+    ext_id, ext_dag = factory.get_extractor_dag(cfg, default_args, dag_name)
+    tra_id, tra_dag = factory.get_transformer_dag(cfg, default_args, dag_name)
+    loa_id, loa_dag = factory.get_loader_dag(cfg, default_args, dag_name)
 
     schedule_interval = (
         cfg.scheduleInterval
         if "scheduleInterval" in cfg
         else default_args["schedule_interval"]
     )
+
     dag = DAG(
         dag_id=dag_name, default_args=default_args, schedule_interval=schedule_interval
     )
 
+    # Create tasks
     start = DummyOperator(task_id="start", dag=dag)
-
-    extract = SubDagOperator(
-        task_id=extractor_id.split(".")[-1], subdag=extractor, dag=dag
-    )
-
-    transform = SubDagOperator(
-        task_id=transformer_id.split(".")[-1], subdag=transformer, dag=dag
-    )
-
+    extract = SubDagOperator(task_id=ext_id.split(".")[-1], subdag=ext_dag, dag=dag)
+    transform = SubDagOperator(task_id=tra_id.split(".")[-1], subdag=tra_dag, dag=dag)
     end = DummyOperator(task_id="end", dag=dag)
 
-    if not test_mode:
-        load = SubDagOperator(task_id=loader_id.split(".")[-1], subdag=loader, dag=dag)
-        start >> extract >> transform >> load >> end
-    else:
+    if run_in_test_mode:
         start >> extract >> transform >> end
-
+    else:
+        load = SubDagOperator(task_id=loa_id.split(".")[-1], subdag=loa_dag, dag=dag)
+        start >> extract >> transform >> load >> end
     return dag
 
 
@@ -90,19 +81,11 @@ default_args = {
 setup_logging()
 logger = logging.getLogger(__name__)
 
-test_mode = os.getenv("BDG_MODE", default=None) == "test"
+run_in_test_mode = os.getenv("INTEGRAPH__EXECUTION__TEST_MODE", default=False)
 
 # Read scheduler config file to get properties file and jobs directory
-root_dir = os.getenv("CONFIG_DIR")
-
-scheduler_cfg_file = os.path.join(root_dir, "scheduler-config.yml")
-scheduler_cfg = read_config(scheduler_cfg_file)
-
-sources_dir = (
-    scheduler_cfg.sources
-    if os.path.isabs(scheduler_cfg.sources)
-    else os.path.join(root_dir, scheduler_cfg.sources)
-)
+root_dir = "/opt/airflow/config"
+scheduler_cfg = read_config(os.path.join(root_dir, "scheduler-config.yml"))
 
 # Read loader config file
 loader_cfg_file = (
@@ -112,33 +95,49 @@ loader_cfg_file = (
 )
 loader_cfg = read_config(loader_cfg_file)
 
-# Create RDFization jobs
-logging.info(f"Collect integration jobs from {sources_dir}")
+# Create integration jobs
+sources_dir = (
+    scheduler_cfg.sources
+    if os.path.isabs(scheduler_cfg.sources)
+    else os.path.join(root_dir, scheduler_cfg.sources)
+)
+logging.info(f"Collect data sources from {sources_dir}")
+
+ignore_sources = []
+if os.path.exists(os.path.join(root_dir, "sources.ignore")):
+    with open(os.path.join(root_dir, "sources.ignore"), "r") as f:
+        ignore_sources = f.readlines()
+        ignore_sources = [src.strip() for src in ignore_sources]
+
+sources = [
+    src
+    for src in os.listdir(sources_dir)
+    if os.path.isdir(os.path.join(sources_dir, src)) and src not in ignore_sources
+]
+logging.info(f"Found {len(sources)} data sources: {sources}")
 
 jobs = []
-factory = WorkflowFactory()
-sources = [
-    src_dir
-    for src_dir in os.listdir(sources_dir)
-    if os.path.isdir(os.path.join(sources_dir, src_dir))
-]
-
-with open(os.path.join(root_dir, "sources.ignore"), "r") as f:
-    ignore_sources = f.readlines()
-    ignore_sources = [src.strip() for src in ignore_sources]
-sources = [src for src in sources if src not in ignore_sources]
-logging.info(f"Found {len(sources)} integration jobs: {sources}")
-
-for source in sources:
-    src_dir = os.path.join(sources_dir, source)
+for src in sources:
+    src_dir = os.path.join(sources_dir, src)
     src_cfg = read_config(os.path.join(src_dir, "config", "config.yml"))
+    src_cfg.ontologies = os.path.join(root_dir, scheduler_cfg.ontologies)
     src_cfg.root_dir = root_dir
     src_cfg.source_root_dir = src_dir
     src_cfg.run_on_localhost = False
     src_cfg.output_dir = os.path.join(src_dir, "output")
     if "internal_id" not in src_cfg:
-        src_cfg.internal_id = source
-    logging.info(f"Create new ETL pipeline : {src_cfg.internal_id} : {src_cfg}")
-    register_dag(
-        create_ETL_dag(src_cfg + loader_cfg, default_args, test_mode=test_mode)
-    )
+        src_cfg.internal_id = src
+
+    logging.info(f"Create new ETL pipeline {src_cfg.internal_id} for data source {src}")
+    try:
+        dag = create_ETL_dag(
+            cfg=src_cfg + loader_cfg,
+            default_args=default_args,
+            run_in_test_mode=run_in_test_mode,
+        )
+    except Exception as err:
+        logging.error(
+            f"Could not create ETL pipeline {src_cfg.internal_id} : {err}. Skip."
+        )
+    else:
+        register_dag(dag)
