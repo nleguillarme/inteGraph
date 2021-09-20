@@ -4,7 +4,7 @@ inteGraph is a library of ETL (Extract-Transform-Load) components for ontology-b
 
 ## License
 
-License: MIT
+License: Apache License 2.0
 
 ## Authors
 
