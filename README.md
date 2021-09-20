@@ -1,3 +1,11 @@
-# BiodivGraph
-A library of ETL (Extract-Transform-Load) components for creating a semantic graph of biodiversity knowledge.
-ETL components can be assembled into ontology-based knowledge integration pipelines whose execution is scheduled and monitored by Apache Airflow
+![](https://i.ibb.co/C0jzrCk/integraph-logo.png)
+
+A library of ETL (Extract-Transform-Load) components for semantic integration of biodiversity data, powered by Apache Airflow.
+
+## License
+
+License: MIT
+
+## Authors
+
+inteGraph was written by [nleguillarme](https://github.com/nleguillarme/).
