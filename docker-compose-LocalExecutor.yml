@@ -2,6 +2,20 @@ version: '2.1'
 
 services:
 
+    yarrrml-parser:
+      build: https://github.com/RMLio/yarrrml-parser.git
+      image: yarrrml-parser:latest
+
+    rmlmapper:
+      build: https://github.com/RMLio/rmlmapper-java.git
+      image: rmlmapper:latest
+
+    nomer:
+      build:
+        context: ${INTEGRAPH__INSTALLATION__INSTALL_DIR}
+        dockerfile: Dockerfile.nomer
+      image: nomer:latest
+
     # neo4j:
     #     build:
     #       context: .
@@ -43,52 +57,28 @@ services:
     #   ports:
     #     - "12110:12110"
 
-    graphdb:
-      image: ontotext/graphdb:9.8.0-free
-      volumes:
-        - ${PWD}/graphdb-data:/opt/graphdb/home
-      environment:
-        GDB_JAVA_OPTS: >-
-          -Xmx12g -Xms12g
-          -Dgraphdb.home=/opt/graphdb/home
-          -Dgraphdb.workbench.importDirectory=/opt/graphdb/home/graphdb-import
-          -Dgraphdb.workbench.cors.enable=true
-          -Denable-context-index=true
-          -Dentity-pool-implementation=transactional
-          -Dhealth.max.query.time.seconds=60
-          -Dgraphdb.append.request.id.headers=true
-          -Dreuse.vars.in.subselects=true
-      ports:
-        - "7200:7200"
-
-    # anzograph:
-    #     build:
-    #           context: .
-    #           dockerfile: Dockerfile.anzograph
-    #           args:
-    #             - USER_UID=1001
-    #             - USER_GID=1001
-    #     image: cambridgesemantics/anzograph:latest
-    #     ports:
-    #         - "8081:8080"
-    #         - "8443:8443"
-    #     volumes:
-    #         - ./dags_test_data/:/opt/shared-directory
-
-    # nomer:
-    #     build:
-    #       context: ${HOME}/workspace/pynomer
-    #       #context: https://github.com/nleguillarme/pynomer.git
-    #       dockerfile: Dockerfile
-    #     image: pynomer
-    #     user: "${USER_ID}:${GROUP_ID}"
-    #     ports:
-    #         - "9090:9090"
-    #     volumes:
-    #         - ${NOMER_DIR}:/.nomer
+    # graphdb:
+    #   image: ontotext/graphdb:9.8.0-free
+    #   volumes:
+    #     - ${PWD}/graphdb-data:/opt/graphdb/home
+    #   environment:
+    #     GDB_JAVA_OPTS: >-
+    #       -Xmx12g -Xms12g
+    #       -Dgraphdb.home=/opt/graphdb/home
+    #       -Dgraphdb.workbench.importDirectory=/opt/graphdb/home/graphdb-import
+    #       -Dgraphdb.workbench.cors.enable=true
+    #       -Denable-context-index=true
+    #       -Dentity-pool-implementation=transactional
+    #       -Dhealth.max.query.time.seconds=60
+    #       -Dgraphdb.append.request.id.headers=true
+    #       -Dreuse.vars.in.subselects=true
+    #   ports:
+    #     - "7200:7200"
 
     postgres:
         image: postgres:9.6
+        networks:
+            - graphdbnet
         environment:
             - POSTGRES_USER=airflow
             - POSTGRES_PASSWORD=airflow
@@ -96,17 +86,18 @@ services:
 
     webserver:
         build:
-          context: ./install_files
+          context: ${INSTALL_FILES_DIR}
           dockerfile: Dockerfile.airflow
           args:
-            - DOCKER_UID=${USER_ID}
-            - DOCKER_GID=999
-        # user: ${USER_ID}:${GROUP_ID}
+            - DOCKER_UID=${INTEGRAPH__CONFIGURATION__USER_ID}
+            - DOCKER_GID=${INTEGRAPH__CONFIGURATION__DOCKER_GROUP_ID}
         image: custom-airflow
         restart: on-failure
         depends_on:
             - postgres
-            - graphdb
+            - yarrrml-parser
+            - rmlmapper
+            - nomer
         environment:
             - AIRFLOW__CORE__EXECUTOR=LocalExecutor
             - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True
@@ -117,21 +108,22 @@ services:
             - AIRFLOW__WEBSERVER__DAG_DEFAULT_VIEW=graph
             - AIRFLOW__WEBSERVER__AUTHENTICATE=False
             - INTEGRAPH__CONFIGURATION__CONFIG_DIR=${INTEGRAPH__CONFIGURATION__CONFIG_DIR}
-            - USER_UID=${USER_ID}
-            - GROUP_UID=${GROUP_ID}
-            - INTEGRAPH__CONFIGURATION__NOMER_CACHE_DIR=${NOMER_DIR}
+            - USER_UID=${INTEGRAPH__CONFIGURATION__USER_ID}
+            - GROUP_UID=${INTEGRAPH__CONFIGURATION__GROUP_ID}
+            - INTEGRAPH__CONFIGURATION__NOMER_CACHE_DIR=${INTEGRAPH__CONFIGURATION__NOMER_CACHE_DIR}
             - INTEGRAPH__EXECUTION__TEST_MODE=${INTEGRAPH__EXECUTION__TEST_MODE}
             - CONFIG_DIR=/opt/airflow/config
             #- AIRFLOW__CORE__FERNET_KEY=${FERNET_KEY}"
         volumes:
-            # - ${INTEGRAPH__CONFIGURATION__CONFIG_DIR}:/opt/airflow/config
-            - shared_config:/opt/airflow/config
+            - ${INTEGRAPH__CONFIGURATION__CONFIG_DIR}:/opt/airflow/config
             - ${PWD}:/opt/airflow/dags
             - ${HOME}/.integraph/logs:/opt/airflow/logs
             - /var/run/docker.sock:/var/run/docker.sock
             - /usr/bin/docker:/usr/bin/docker
             # Uncomment to include custom plugins
             # - ./plugins:/usr/local/airflow/plugins
+        networks:
+            - graphdbnet
         ports:
             - "8080:8080"
         command: webserver
@@ -141,10 +133,14 @@ services:
             timeout: 30s
             retries: 3
 
-volumes:
-  shared_config:
-    driver: local
-    driver_opts:
-        type: none
-        device: ${INTEGRAPH__CONFIGURATION__CONFIG_DIR} #NOTE needs full path (~ doesn't work)
-        o: bind
+networks:
+  graphdbnet:
+    external: true
+
+# volumes:
+#   shared_config:
+#     driver: local
+#     driver_opts:
+#         type: none
+#         device: ${INTEGRAPH__CONFIGURATION__CONFIG_DIR} #NOTE needs full path (~ doesn't work)
+#         o: bind
