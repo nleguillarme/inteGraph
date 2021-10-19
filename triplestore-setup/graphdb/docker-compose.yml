@@ -1,0 +1,33 @@
+version: "3"
+
+services:
+  graphdb:
+    container_name: graphdb
+    build:
+      context: ./free-edition
+      dockerfile: Dockerfile
+      args:
+        version: ${GRAPHDB_VERSION}
+    restart: unless-stopped
+    environment: 
+      GDB_JAVA_OPTS: >-
+        -Xmx${GRAPHDB_HEAP_SIZE} -Xms${GRAPHDB_HEAP_SIZE}
+        -Dgraphdb.home=/opt/graphdb/home
+        -Dgraphdb.workbench.importDirectory=/opt/graphdb/home/graphdb-import
+        -Dgraphdb.workbench.cors.enable=true
+        -Denable-context-index=true
+        -Dentity-pool-implementation=transactional
+        -Dhealth.max.query.time.seconds=60
+        -Dgraphdb.append.request.id.headers=true
+        -Dreuse.vars.in.subselects=true
+    networks:
+      - graphdbnet
+    ports: 
+      - 127.0.0.1:7200:7200
+    volumes:
+      - ${GRAPHDB_HOME}:/opt/graphdb/home
+
+networks:
+  graphdbnet:
+    name: graphdbnet
+

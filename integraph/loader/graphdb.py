@@ -29,7 +29,7 @@ class GraphDBLoader(Loader):
         self.cfg = config
         self.cfg.rdf_format = "nq"
         self.base_url = f"http://{self.cfg.db_host}:{self.cfg.db_port}"
-        self.headers = {"Content-Type": "application/n-quads"}  # application/n-quads"}
+        self.headers = {"Content-Type": "application/n-quads"}
         self.cfg.graph_dir = os.path.join(self.cfg.output_dir, "graph")
         self.logger.info("New GraphDB Loader with id {}".format(self.get_id()))
 
