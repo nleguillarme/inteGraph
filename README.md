@@ -5,7 +5,7 @@ inteGraph is a library of ETL (Extract-Transform-Load) components for ontology-b
 ## Project status
 
 - [x] Operational data integration workflow
-- [ ] Data loading to SPARQL endpoint, Virtuoso, ~~GraphDB~~, RDFox
+- [ ] Data loading to SPARQL endpoint, Virtuoso, GraphDB :heavy_check_mark:, RDFox
 - [ ] Extensive documentation
 - [ ] **First release**
 
