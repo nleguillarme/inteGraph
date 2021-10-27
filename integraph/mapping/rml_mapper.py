@@ -31,14 +31,19 @@ class RMLMappingEngine:
         self.path_to_yaml_rules = self.cfg.ontological_mapping_file
         self.path_to_rml_rules = None
 
-        self.config_dir = os.getenv("INTEGRAPH__CONFIGURATION__CONFIG_DIR")
+        self.local_config_dir = os.getenv("INTEGRAPH__CONFIG__HOST_CONFIG_DIR")
+        self.docker_config_dir = os.getenv("INTEGRAPH__CONFIG__ROOT_CONFIG_DIR")
 
     def run_yarrrml_parser_container(self, yaml_filename, rml_filename):
         remote_yaml_path = os.path.join("/data", yaml_filename)
         remote_rml_path = os.path.join("/data", rml_filename)
 
-        path_to_yaml_rules = self.path_to_yaml_rules.replace(
-            "/opt/airflow/config", self.config_dir
+        path_to_yaml_rules = (
+            self.path_to_yaml_rules.replace(
+                self.docker_config_dir, self.local_config_dir
+            )
+            if self.docker_config_dir in self.path_to_yaml_rules
+            else self.path_to_yaml_rules
         )
 
         volume = {os.path.dirname(path_to_yaml_rules): {"bind": "/data", "mode": "rw"}}
@@ -55,7 +60,11 @@ class RMLMappingEngine:
         remote_rml_path = os.path.join("/data", rml_filename)
         remote_rdf_path = os.path.join("/data", rdf_filename)
 
-        w_dir = working_dir.replace("/opt/airflow/config", self.config_dir)
+        w_dir = (
+            working_dir.replace(self.docker_config_dir, self.local_config_dir)
+            if self.docker_config_dir in working_dir
+            else working_dir
+        )
 
         # TODO: replace working_dir by named volume (when it will be possible to mount subdir of named volumes)
         # See:  - https://stackoverflow.com/questions/50971417/docker-inside-docker-volume-is-mounted-but-empty

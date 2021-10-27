@@ -107,15 +107,15 @@ services:
             - AIRFLOW__WEBSERVER__DAG_ORIENTATION=TB
             - AIRFLOW__WEBSERVER__DAG_DEFAULT_VIEW=graph
             - AIRFLOW__WEBSERVER__AUTHENTICATE=False
-            - INTEGRAPH__CONFIGURATION__CONFIG_DIR=${INTEGRAPH__CONFIGURATION__CONFIG_DIR}
-            - USER_UID=${INTEGRAPH__CONFIGURATION__USER_ID}
-            - GROUP_UID=${INTEGRAPH__CONFIGURATION__GROUP_ID}
-            - INTEGRAPH__CONFIGURATION__NOMER_CACHE_DIR=${INTEGRAPH__CONFIGURATION__NOMER_CACHE_DIR}
-            - INTEGRAPH__EXECUTION__TEST_MODE=${INTEGRAPH__EXECUTION__TEST_MODE}
-            - CONFIG_DIR=/opt/airflow/config
+            - USER_UID=${INTEGRAPH__CONFIG__USER_ID}
+            - GROUP_UID=${INTEGRAPH__CONFIG__GROUP_ID}
+            - INTEGRAPH__CONFIG__NOMER_CACHE_DIR=${INTEGRAPH__CONFIG__NOMER_CACHE_DIR}
+            - INTEGRAPH__CONFIG__HOST_CONFIG_DIR=${INTEGRAPH__CONFIG__HOST_CONFIG_DIR}
+            - INTEGRAPH__CONFIG__ROOT_CONFIG_DIR=/opt/airflow/config
+            - INTEGRAPH__EXEC__TEST_MODE=${INTEGRAPH__EXEC__TEST_MODE}
             #- AIRFLOW__CORE__FERNET_KEY=${FERNET_KEY}"
         volumes:
-            - ${INTEGRAPH__CONFIGURATION__CONFIG_DIR}:/opt/airflow/config
+            - ${INTEGRAPH__CONFIG__HOST_CONFIG_DIR}:/opt/airflow/config
             - ${PWD}:/opt/airflow/dags
             - ${HOME}/.integraph/logs:/opt/airflow/logs
             - /var/run/docker.sock:/var/run/docker.sock

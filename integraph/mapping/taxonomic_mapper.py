@@ -32,7 +32,7 @@ class NomerHelper:
         self.logger = logging.getLogger(__name__)
         self.client = docker.from_env()
         self.nomer_image = self.client.images.get("nomer:latest")
-        self.nomer_cache_dir = os.getenv("INTEGRAPH__CONFIGURATION__NOMER_CACHE_DIR")
+        self.nomer_cache_dir = os.getenv("INTEGRAPH__CONFIG__NOMER_CACHE_DIR")
         self.columns = [
             "queryId",
             "queryName",

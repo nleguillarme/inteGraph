@@ -3,6 +3,7 @@ import argparse
 import logging
 import shutil
 import requests
+from urllib.parse import urlparse
 from requests.adapters import HTTPAdapter
 from requests_file import FileAdapter
 from .extractor import Extractor
@@ -21,7 +22,15 @@ class FileExtractor(Extractor):
         self.cfg.ready_to_process_data_dir = os.path.join(
             self.cfg.output_dir, "ready_to_process"
         )
-        self.cfg.file_location = os.path.expandvars(self.cfg.file_location)
+
+        parsed = urlparse(self.cfg.file_location)
+        if parsed.scheme not in ("http", "https"):
+            filepath = os.path.join(self.cfg.source_root_dir, self.cfg.file_location)
+            if os.path.exists(filepath):
+                self.cfg.file_location = "file://" + filepath
+            else:
+                raise FileNotFoundError("file {} not found".format(filepath))
+        # self.cfg.file_location = os.path.expandvars(self.cfg.file_location)
 
     def run(self):
         self.clean_data_dir()

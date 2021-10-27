@@ -63,12 +63,9 @@ class CSV2RDF(Transformer):
         self.entity_mapper = None
         if (
             "entity_mapper_conf" in self.properties
-            and "ontology_file" in self.properties.entity_mapper_conf
+            and "ontology" in self.properties.entity_mapper_conf
         ):
-            self.properties.entity_mapper_conf.ontology_file = os.path.join(
-                self.cfg.source_root_dir,
-                self.properties.entity_mapper_conf.ontology_file,
-            )
+            self.properties.entity_mapper_conf.ontologies = self.cfg.ontologies
             self.entity_mapper = OntologyMapper(self.properties.entity_mapper_conf)
             self.entity_mapper.load_ontology()
 
@@ -90,11 +87,11 @@ class CSV2RDF(Transformer):
         )
         self.triplifier = RMLMappingEngine(self.properties.triplifier_conf)
 
-        self.robot = RobotHelper(config={})
-        self.cfg.taxonomy_file = os.path.join(
-            self.cfg.ontologies, self.properties.taxonomy_file
-        )
-        print(self.cfg.taxonomy_file)
+        # self.robot = RobotHelper(config={})
+        # self.cfg.taxonomy_file = os.path.join(
+        #     self.cfg.ontologies, self.properties.taxonomy_file
+        # )
+        # print(self.cfg.taxonomy_file)
 
         self.logger.info("New CSV2RDF Transformer with id {}".format(self.get_id()))
 
@@ -220,17 +217,17 @@ class CSV2RDF(Transformer):
             os.path.join(wdir, os.path.basename(f_out)), self.cfg.triples_dir
         )
 
-    def extract_taxonomy(self, f_in, f_out, **kwargs):
-        df_taxon = read(f_in, sep=self.properties.delimiter)
-        f_taxo = self.cfg.taxonomy_file
-        f_terms = os.path.join(os.path.dirname(f_in), "terms.txt")
-        df_taxon = read(f_in, sep=self.properties.delimiter)
-        terms = df_taxon["src_iri"].drop_duplicates().tolist()
-        terms += df_taxon["tgt_iri"].drop_duplicates().tolist()
-        terms = set(terms)
-        with open(f_terms, "w") as f:
-            f.write("\n".join(terms))
-        self.robot.extract(f_in=f_taxo, f_terms=f_terms, f_out=f_out)
+    # def extract_taxonomy(self, f_in, f_out, **kwargs):
+    #     df_taxon = read(f_in, sep=self.properties.delimiter)
+    #     f_taxo = self.cfg.taxonomy_file
+    #     f_terms = os.path.join(os.path.dirname(f_in), "terms.txt")
+    #     df_taxon = read(f_in, sep=self.properties.delimiter)
+    #     terms = df_taxon["src_iri"].drop_duplicates().tolist()
+    #     terms += df_taxon["tgt_iri"].drop_duplicates().tolist()
+    #     terms = set(terms)
+    #     with open(f_terms, "w") as f:
+    #         f.write("\n".join(terms))
+    #     self.robot.extract(f_in=f_taxo, f_terms=f_terms, f_out=f_out)
 
     # Merge RDF graphs
     def merge(self, f_in_list, f_out, **kwargs):

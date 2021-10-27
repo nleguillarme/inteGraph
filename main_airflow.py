@@ -5,6 +5,8 @@ import logging
 import os
 import json
 from datetime import date, datetime, timedelta
+from pathlib import Path
+from os.path import join, exists, isabs, isdir
 
 from integraph.util.config_helper import read_config
 from integraph.pipeline import PipelineFactory
@@ -18,7 +20,7 @@ def setup_logging(
     value = os.getenv(env_key, None)
     if value:
         path = value
-    if os.path.exists(path):
+    if exists(path):
         with open(path, "rt") as f:
             config = json.load(f)
         logging.config.dictConfig(config)
@@ -81,54 +83,62 @@ default_args = {
 setup_logging()
 logger = logging.getLogger(__name__)
 
-run_in_test_mode = os.getenv("INTEGRAPH__EXECUTION__TEST_MODE", default=False)
+run_in_test_mode = os.getenv("INTEGRAPH__EXEC__TEST_MODE", default=False)
 
 # Read scheduler config file to get properties file and jobs directory
-root_dir = "/opt/airflow/config"
-scheduler_cfg = read_config(os.path.join(root_dir, "scheduler-config.yml"))
+root_dir = os.getenv(
+    "INTEGRAPH__CONFIG__ROOT_CONFIG_DIR", default="/opt/airflow/config"
+)  # "/opt/airflow/config"
+scheduler_cfg = read_config(join(root_dir, "scheduler-config.yml"))
+
+# Read properties file
+properties = read_config(join(root_dir, scheduler_cfg.properties))
+print(properties)
 
 # Read loader config file
 loader_cfg_file = (
     scheduler_cfg.loader
-    if os.path.isabs(scheduler_cfg.loader)
-    else os.path.join(root_dir, scheduler_cfg.loader)
+    if isabs(scheduler_cfg.loader)
+    else join(root_dir, scheduler_cfg.loader)
 )
 loader_cfg = read_config(loader_cfg_file)
 
 # Create integration jobs
 sources_dir = (
     scheduler_cfg.sources
-    if os.path.isabs(scheduler_cfg.sources)
-    else os.path.join(root_dir, scheduler_cfg.sources)
+    if isabs(scheduler_cfg.sources)
+    else join(root_dir, scheduler_cfg.sources)
 )
 logging.info(f"Collect data sources from {sources_dir}")
 
 ignore_sources = []
-if os.path.exists(os.path.join(root_dir, "sources.ignore")):
-    with open(os.path.join(root_dir, "sources.ignore"), "r") as f:
+if exists(join(root_dir, "sources.ignore")):
+    with open(join(root_dir, "sources.ignore"), "r") as f:
         ignore_sources = f.readlines()
-        ignore_sources = [src.strip() for src in ignore_sources]
+        ignore_sources = [join(sources_dir, src.strip()) for src in ignore_sources]
 
-sources = [
-    src
-    for src in os.listdir(sources_dir)
-    if os.path.isdir(os.path.join(sources_dir, src)) and src not in ignore_sources
-]
+sources = [join(*path.parts[:-2]) for path in Path(sources_dir).glob("**/config.yml")]
+sources = [src for src in sources if isdir(src) and src not in ignore_sources]
+
 logging.info(f"Found {len(sources)} data sources: {sources}")
 
 jobs = []
 for src in sources:
-    src_dir = os.path.join(sources_dir, src)
-    src_cfg = read_config(os.path.join(src_dir, "config", "config.yml"))
-    src_cfg.ontologies = os.path.join(root_dir, scheduler_cfg.ontologies)
+    src_dir = src  # os.path.join(sources_dir, src)
+    src_cfg = read_config(join(src_dir, "config", "config.yml"))
+    src_cfg.ontologies = (
+        properties.ontologies
+    )  # os.path.join(root_dir, scheduler_cfg.ontologies)
     src_cfg.root_dir = root_dir
     src_cfg.source_root_dir = src_dir
     src_cfg.run_on_localhost = False
-    src_cfg.output_dir = os.path.join(src_dir, "output")
+    src_cfg.output_dir = join(src_dir, "output")
     if "internal_id" not in src_cfg:
         src_cfg.internal_id = src
 
-    logging.info(f"Create new ETL pipeline {src_cfg.internal_id} for data source {src}")
+    logging.info(
+        f"Create new ETL pipeline {src_cfg.internal_id}"  # for data source {src_cfg.internal_id}"
+    )
     try:
         dag = create_ETL_dag(
             cfg=src_cfg + loader_cfg,

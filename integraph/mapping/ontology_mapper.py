@@ -4,6 +4,11 @@ import os
 import numpy as np
 import pandas as pd
 from owlready2 import *
+from ..util.file_helper import cached_path
+
+
+class OntologyNotFoundException(Exception):
+    pass
 
 
 class OntologyMapper:
@@ -13,11 +18,19 @@ class OntologyMapper:
         self.onto = None
 
     def load_ontology(self):
-        onto_path = f"file:///{os.path.abspath(self.cfg.ontology_file)}"
-        self.onto = get_ontology(onto_path)
-        self.onto.load()
-        if self.onto.loaded:
-            self.logger.info(f"Loaded ontology {self.onto.name}")
+        print(self.cfg.ontology, self.cfg.ontologies)
+        onto_path = self.cfg.ontologies[self.cfg.ontology]
+        # onto_path = f"file:///{os.path.abspath(self.cfg.ontology_file)}"
+        if onto_path:
+            # TODO : Get file or download and cache if needed
+            self.onto = get_ontology(onto_path)
+            self.onto.load()
+            if self.onto.loaded:
+                self.logger.info(f"Loaded ontology {self.onto.name}")
+        else:
+            raise OntologyNotFoundException(
+                "Path to ontology {} not found".format(self.onto)
+            )
 
     def get_iri(self, entity):
         iris = self.onto.search(label=entity)

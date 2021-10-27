@@ -1,9 +1,10 @@
-export INTEGRAPH__CONFIGURATION__CONFIG_DIR=$(shell pwd)/test-config
-export INTEGRAPH__CONFIGURATION__USER_ID = $(shell id -u)
-export INTEGRAPH__CONFIGURATION__GROUP_ID = $(shell id -g)
-export INTEGRAPH__CONFIGURATION__DOCKER_GROUP_ID = $(shell awk -F\: '/docker/ {print $3}' /etc/group)
-export INTEGRAPH__CONFIGURATION__NOMER_CACHE_DIR = ${HOME}/.integraph/.nomer
-export INTEGRAPH__INSTALLATION__INSTALL_DIR=${PWD}/install_files
+#export INTEGRAPH__CONFIG__HOST_CONFIG_DIR=$(shell pwd)/test-config
+export INTEGRAPH__CONFIG__HOST_CONFIG_DIR=/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/integraph-config
+export INTEGRAPH__CONFIG__USER_ID = $(shell id -u)
+export INTEGRAPH__CONFIG__GROUP_ID = $(shell id -g)
+export INTEGRAPH__CONFIG__DOCKER_GROUP_ID = $(shell awk -F\: '/docker/ {print $3}' /etc/group)
+export INTEGRAPH__CONFIG__NOMER_CACHE_DIR = ${HOME}/.integraph/.nomer
+export INTEGRAPH__INSTALL__INSTALL_DIR=${PWD}/install_files
 
 ################
 # Development
@@ -13,10 +14,15 @@ test_dags:
 		python -m pytest tests/test_dags.py
 
 test:
-		mkdir -p "${INTEGRAPH__CONFIGURATION__NOMER_CACHE_DIR}"
-		INTEGRAPH__EXECUTION__TEST_MODE="True"\
-		INTEGRAPH__CONFIGURATION__CONFIG_DIR="$(shell pwd)/test-config"\
+		mkdir -p "${INTEGRAPH__CONFIG__NOMER_CACHE_DIR}"
+		INTEGRAPH__EXEC__TEST_MODE="True"\
+		#INTEGRAPH__CONFIG__HOST_CONFIG_DIR="$(shell pwd)/test-config"\
 		docker-compose -f docker-compose-LocalExecutor.yml up webserver
+
+test_main:
+		INTEGRAPH__EXEC__TEST_MODE="True"\
+	  INTEGRAPH__CONFIG__ROOT_CONFIG_DIR="/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/integraph-config"\
+		python main_airflow.py
 
 ################
 # Production
@@ -29,7 +35,7 @@ build:
 
 up:
 		#@FERNET_KEY="$(shell docker run custom-airflow python -c "from cryptography.fernet import Fernet; FERNET_KEY = Fernet.generate_key().decode(); print(FERNET_KEY)")"\
-		mkdir -p "${INTEGRAPH__CONFIGURATION__NOMER_CACHE_DIR}"
+		mkdir -p "${INTEGRAPH__CONFIG__NOMER_CACHE_DIR}"
 		docker-compose -f docker-compose-LocalExecutor.yml up webserver
 
 down:
