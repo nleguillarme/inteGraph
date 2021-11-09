@@ -116,7 +116,7 @@ class NomerHelper:
 class TaxonomicEntityMapper:
     def __init__(self, prefix, config):
         self.logger = logging.getLogger(__name__)
-        self.uri_mapper = URIMapper()
+        # self.uri_mapper = URIMapper()
         self.config = config
         self.prefix = prefix
 
@@ -147,13 +147,13 @@ class TaxonomicEntityMapper:
             self.target_taxonomy = self.default_taxonomy
 
         self.nomer = NomerHelper()
-        self.taxo_to_matcher = {"GBIF": "gbif-taxon-id", "NCBI": "ncbi-taxon"}
+        self.taxo_to_matcher = {"GBIF": "gbif", "NCBI": "ncbi"}
 
     def format_id_column(self, df, id_column, taxonomy):
-        # def format_id(id):
-        #     if pd.isnull(id):
-        #         return id
-        #     return str(int(id)) if str(id).replace(".", "", 1).isdigit() else id
+        """
+        Format taxon identifier as DB:XXXX (e.g. NCBI:6271, GBIF:234581...).
+        """
+
         return df.apply(
             lambda row: f"{self.source_taxonomy}:" + row[id_column]
             if (
@@ -164,26 +164,37 @@ class TaxonomicEntityMapper:
             axis=1,
         )
 
-    def validate(self, df, id_column=None, name_column=None):
+    def validate(self, df, id_column=None, name_column=None, matcher=None):
+        """
+        Match taxon from the source taxonomy to the source taxonomy
+        (e.g.GBIF to GBIF) to filter out taxa with invalid ids.
+        """
 
         # Drop duplicates for efficiency
         subset = id_column if id_column else name_column
-        df_copy = df.drop_duplicates(subset=subset)
-        if id_column and self.source_taxonomy:
-            df_copy[id_column] = self.format_id_column(
-                df_copy, id_column, self.source_taxonomy
-            )
+        df_copy = df.copy().drop_duplicates(subset=subset)
+
+        # For NCBI and GBIF, the id must be an integer
 
         if id_column:
-            # Create nomer query
+            valid_df = df_copy[df_copy[id_column].str.isnumeric()]
+
+            if self.source_taxonomy:  # Format taxon id
+                valid_df[id_column] = valid_df[id_column].map(
+                    lambda id: f"{self.source_taxonomy}:{id}"
+                    if (
+                        pd.notnull(id)
+                        and not str(id).startswith(self.source_taxonomy + ":")
+                    )
+                    else id
+                )
+
             query = self.nomer.df_to_query(
-                df=df_copy,
+                df=valid_df,
                 id_column=id_column,
                 name_column=name_column,
             )
-            res_df = self.nomer.ask_nomer(
-                query, matcher=self.taxo_to_matcher[self.source_taxonomy]
-            )
+            res_df = self.nomer.ask_nomer(query, matcher=matcher)
             res_df.set_index(
                 pd.Index(res_df["queryId"]).rename("externalId"),
                 drop=False,
@@ -191,83 +202,92 @@ class TaxonomicEntityMapper:
             )
             mask = res_df["matchType"].isin(["SAME_AS", "SYNONYM_OF"])
             valid_df = res_df[mask]
-            invalid_df = res_df[~mask]
 
-        else:
+            # invalid_df = res_df[~mask]
+
+        else:  # Validate names (all names are considered valid)
             valid_df = pd.DataFrame(
                 index=pd.Index(df_copy[name_column]).rename("externalId"),
                 columns=self.nomer.columns,
             )
-            # valid_df = valid_df.fill_na()
             valid_df["queryName"] = df_copy[name_column].to_list()
             valid_df["matchType"] = "SAME_AS"
             valid_df["matchName"] = df_copy[name_column].to_list()
-            invalid_df = None
+            # invalid_df = None
 
-        return valid_df, invalid_df
+        return valid_df  # , invalid_df
 
-    def source_id_to_target_id(
-        self, df, id_column, name_column, matcher="wikidata-taxon-id-web"
-    ):
-        """Ask nomer about a batch of taxon IDs."""
+    def source_id_to_target_id(self, df, id_column, name_column=None, matcher=None):
+        """
+        Ask nomer about a batch of taxon identifiers using a given matcher.
+        """
 
         df_copy = df.drop_duplicates(subset=id_column)
 
-        query_to_ref_index_map = {}
-        for index, row in df_copy.iterrows():
-            key = row[id_column]
-            if key in query_to_ref_index_map:
-                raise ValueError(f"Key {key} already in map")
-            query_to_ref_index_map[key] = index
+        # Keep a reference to the index of the row containing the identifier
+        query_to_ref_index_map = {
+            row[id_column]: index for index, row in df_copy.iterrows()
+        }
 
         query = self.nomer.df_to_query(
             df=df_copy,
             id_column=id_column,
             name_column=name_column,
         )
-
         res_df = self.nomer.ask_nomer(query, matcher=matcher)
 
-        res_df = res_df.dropna(axis=0, subset=["matchId"])
-        res_df = res_df[res_df["matchType"].isin(["SAME_AS", "SYNONYM_OF"])]
+        # Keep non empty matches with types SAME_AS or SYNONYM_OF in the target taxonomy
+        mapped_df = res_df.dropna(axis=0, subset=["matchId"])
+        mapped_df = mapped_df[mapped_df["matchType"].isin(["SAME_AS", "SYNONYM_OF"])]
 
-        mapped_df = res_df[res_df["matchId"].str.startswith(self.target_taxonomy)]
+        if not mapped_df.empty:
+            mapped_df = mapped_df[
+                mapped_df["matchId"].str.startswith(self.target_taxonomy)
+            ]
 
-        duplicated = mapped_df.duplicated(subset=["queryId"], keep=False)
-        if duplicated.any():
-            self.logger.error(
-                f"Found several target IDs for a single taxa in df: {mapped_df[duplicated]}"
+            # Check if a single taxon matches with several (distinct) ids in the target taxonomy
+            # Sometimes, the same taxon is matched several times to the same target id,
+            # so we start by dropping these duplicates, then looks for remaining duplicates.
+            duplicated = mapped_df.drop_duplicates(
+                subset=["queryId", "matchId"], keep=False
+            ).duplicated(subset=["queryId"], keep=False)
+            if duplicated.any():
+                self.logger.error(
+                    f"Found several target IDs for a single taxa in df: {mapped_df[duplicated]}"
+                )
+                mapped_df[duplicated].to_csv("duplicated.csv")
+                mapped_df = mapped_df[~duplicated]
+                # raise Exception("Unable to handle multiple candidates at id level.")
+
+            # Reset index using the (id, index) map
+            mapped_index = mapped_df["queryId"].map(query_to_ref_index_map)
+            mapped_df.set_index(
+                pd.Index(mapped_index.tolist()).rename("externalId"),
+                inplace=True,
             )
-            raise Exception("Unable to handle multiple candidates at id level")
 
-        mapped_index = mapped_df["queryId"].map(query_to_ref_index_map)
-        mapped_df.set_index(
-            pd.Index(mapped_index.tolist()).rename("externalId"),
-            inplace=True,
-        )
+            # others_df contains all the taxa that have no match in the target taxonomy
+            others_df = df_copy[~df_copy[id_column].isin(mapped_df["queryId"])]
 
-        others_df = df_copy[~df_copy[id_column].isin(mapped_df["queryId"])]
+        else:
+            others_df = df
 
         return mapped_df, others_df
 
     def source_name_to_target_id(
         self, df, id_column=None, name_column=None, matcher="ncbi-taxon"
     ):
-        """Ask nomer about a batch of taxon names.
-
-        When there are several taxa matching with the same name, this function
-        tries to get the best match using a maximum lineage similarity approach.
+        """Ask nomer about a batch of taxon names using a given matcher.
+        When there are several taxa matching the same name, we try to find
+        the best match using a maximum lineage similarity approach (this
+        requires a valid id_column).
         """
 
         # df_copy = df.drop_duplicates(subset=[id_column, name_column])
         ref_col = id_column if id_column else name_column
 
-        query_to_ref_index_map = {}
-        for index, row in df.iterrows():
-            key = row[ref_col]
-            if key in query_to_ref_index_map:
-                raise ValueError(f"Key {key} already in map")
-            query_to_ref_index_map[key] = index
+        # Keep a reference to the index of the row containing the identifier
+        query_to_ref_index_map = {row[ref_col]: index for index, row in df.iterrows()}
 
         query = self.nomer.df_to_query(
             df=df,
@@ -275,17 +295,21 @@ class TaxonomicEntityMapper:
             id_column=id_column,
         )
         res_df = self.nomer.ask_nomer(query, matcher=matcher)
-        res_df = res_df.dropna(axis=0, subset=["matchId"])
-        res_df = res_df[res_df["matchType"].isin(["SAME_AS", "SYNONYM_OF"])]
 
-        if not res_df.empty:
-            mapped_df = res_df[res_df["matchId"].str.startswith(self.target_taxonomy)]
+        # Keep non empty matches with types SAME_AS or SYNONYM_OF in the target taxonomy
+        mapped_df = res_df.dropna(axis=0, subset=["matchId"])
+        mapped_df = mapped_df[mapped_df["matchType"].isin(["SAME_AS", "SYNONYM_OF"])]
+
+        if not mapped_df.empty:
+            mapped_df = mapped_df[
+                mapped_df["matchId"].str.startswith(self.target_taxonomy)
+            ]
 
             subset = "queryId" if id_column else "queryName"
             duplicated = mapped_df.duplicated(subset=[subset], keep=False)
             if duplicated.any():
                 self.logger.info(
-                    f"Found several target entities for a single taxa in df :\n{mapped_df.loc[duplicated]}"
+                    f"Found several target entities for a single taxon in df :\n{mapped_df.loc[duplicated]}"
                 )
                 if id_column:
                     keep_index = self.resolve_duplicates(
@@ -295,7 +319,7 @@ class TaxonomicEntityMapper:
                         duplicated.loc[index] = False
                 else:
                     self.logger.info(
-                        "Cannot resolve duplicates without a valid id column : discard the taxon"
+                        "Cannot resolve duplicates without a valid id column : discard the taxon."
                     )
 
             mapped_df = mapped_df[~duplicated]
@@ -305,15 +329,15 @@ class TaxonomicEntityMapper:
                 pd.Index(mapped_index.tolist()).rename("externalId"),
                 inplace=True,
             )
-
             others_df = df[~df[ref_col].isin(mapped_df[subset])]
+
         else:
-            mapped_df = res_df
             others_df = df
 
         return mapped_df, others_df
 
     def resolve_duplicates(self, ref_df, duplicates, id_column, query_to_ref_index_map):
+
         unique_duplicates = duplicates["queryId"].unique()
         keep_index = []
         self.logger.debug(f"Unique duplicates {unique_duplicates}")
@@ -332,15 +356,14 @@ class TaxonomicEntityMapper:
         return keep_index
 
     def get_best_match(self, reference, candidates):
-        """Given nomer response for a given taxon, return the best match.
-
+        """
+        Given nomer's response for a given taxon, return the best match.
         If only one match, returns the candidate IRI
         If more than one match, get the full lineage of the query taxon from its taxid
             For each candidate
                 Compute the similarity between the query taxon lineage and the candidate lineage
                 Similarity = the length of the intersection of the two lineages
             Return best match = the IRI of the candidate with the maximum similarity
-
         """
         ref_lineage = [x.strip(" ") for x in reference["linNames"].split("|") if x]
 
@@ -384,190 +407,35 @@ class TaxonomicEntityMapper:
             )
         return best_index
 
-    # def source_to_target_id(self, df, id_column, matcher):
-    #     """Ask nomer about a batch of taxon IDs."""
-    #
-    #     tgt_ids = pd.DataFrame(columns=["canonical_name", self.target_taxonomy])
-    #
-    #
-    #
-    #     query = self.df_to_query(
-    #         df=df.drop_duplicates(subset=id_column), id_column=id_column
-    #     )
-    #     res_df = self.ask_nomer(query, matcher=matcher)
-    #     res_df = res_df.dropna(axis=0, subset=[3])
-    #     res_df = res_df[res_df[2] != "NONE"]
-    #     if not res_df.empty:
-    #         for index, row in df.iterrows():
-    #             loc = res_df[0].isin([row[id_column]])
-    #             if loc.any():
-    #                 matched = res_df[loc]
-    #                 res = {"canonical_name": matched[4].mode().iloc[0]}
-    #                 tgt_taxo_match = matched[
-    #                     matched[3].str.startswith(self.target_taxonomy)
-    #                 ]
-    #                 res[self.target_taxonomy] = (
-    #                     None if tgt_taxo_match.empty else tgt_taxo_match.iloc[0][3]
-    #                 )
-    #                 tgt_ids.at[index] = res
-    #     return tgt_ids
-
-    # def get_best_match(self, src_taxid, src_name, df):
-    #     """Given nomer response for a given taxon, return the best match.
-    #
-    #     If only one match, returns the candidate IRI
-    #     If more than one match, get the full lineage of the query taxon from its taxid
-    #         For each candidate
-    #             Compute the similarity between the query taxon lineage and the candidate lineage
-    #             Similarity = the length of the intersection of the two lineages
-    #         Return best match = the IRI of the candidate with the maximum similarity
-    #
-    #     """
-    #     if df.shape[0] == 1:
-    #         return [
-    #             {"canonical_name": df[4].iloc[0], self.target_taxonomy: df[3].iloc[0]}
-    #         ]
-    #     else:
-    #         self.logger.debug(
-    #             f"Found multiple matches for taxon {src_name}: get best match"
-    #         )
-    #         query = f'"{src_taxid}\\t"'  # f"{src_taxid}\t"
-    #         # Get lineage from source taxid using cache matcher
-    #         res_df = self.ask_nomer(query, matcher=self.cache_matcher)
-    #         if res_df[2].iloc[0] not in [
-    #             "SAME_AS",
-    #             "SYNONYM_OF",
-    #         ]:  # If not found, try again using enrich matcher
-    #             res_df = self.ask_nomer(query, matcher="globi-enrich")
-    #         if res_df[2].iloc[0] in [
-    #             "SAME_AS",
-    #             "SYNONYM_OF",
-    #         ]:
-    #             src_lineage = res_df[7].iloc[0].split(" | ")
-    #         else:
-    #             self.logger.debug(
-    #                 f"Could not get lineage from taxid {src_taxid}: cannot find best match"
-    #             )
-    #             return None
-    #
-    #         tgt_lineages = [
-    #             {
-    #                 "index": index,
-    #                 "lineage": [x.strip(" ") for x in row[7].split("|") if x],
-    #             }
-    #             for index, row in df.iterrows()
-    #         ]
-    #
-    #         if len(set([",".join(tgt["lineage"]) for tgt in tgt_lineages])) == 1:
-    #             best_index = tgt_lineages[0]["index"]
-    #             best_match = df[3].loc[best_index]
-    #             self.logger.debug(
-    #                 f"Found multiple matches with same lineage for taxon {src_name}: {best_match}"
-    #             )
-    #         else:
-    #             similarities = [
-    #                 1.0
-    #                 * len(set(src_lineage).intersection(tgt["lineage"]))
-    #                 / len(set(src_lineage))
-    #                 for tgt in tgt_lineages
-    #             ]
-    #             # print(tgt_lineages, similarities)
-    #             max_sim = max(similarities)
-    #             max_indexes = [{name_column} column
-    #                 i for i, sim in enumerate(similarities) if sim == max_sim
-    #             ]
-    #             if len(max_indexes) > 1:
-    #                 self.logger.debug(
-    #                     f"Found multiple best matches with similarity {max_sim:.2f}: cannot find best match"
-    #                 )
-    #                 return [
-    #                     {
-    #                         "canonical_name": df[4].loc[tgt_lineages[index]["index"]],
-    #                         self.target_taxonomy: df[3].loc[
-    #                             tgt_lineages[index]["index"]
-    #                         ],
-    #                     }
-    #                     for index in max_indexes
-    #                 ]  # None
-    #
-    #             best_index = tgt_lineages[max_indexes[0]]["index"]
-    #             best_match = {
-    #                 "canonical_name": df[4].loc[best_index],
-    #                 self.target_taxonomy: df[3].loc[best_index],
-    #             }
-    #             self.logger.debug(
-    #                 f"Found best match with similarity {max_sim:.2f} for taxon {src_name}: {best_match}"
-    #             )
-    #         return [best_match]
-
-    # def name_to_target_id(self, df, name_column, id_column, matcher):
-    #     """Ask nomer about a batch of taxon names.
-    #
-    #     When there are several taxa matching with the same name, this function
-    #     tries to get the best match using a maximum lineage similarity approach.
-    #     """
-    #     # tgt_ids = pd.Series()
-    #     tgt_ids = pd.DataFrame(columns=["canonical_name", self.target_taxonomy])
-    #     query = self.df_to_query(
-    #         df=df.drop_duplicates(subset=name_column), name_column=name_column
-    #     )
-    #     res_df = self.ask_nomer(query, matcher=matcher)
-    #     res_df = res_df.dropna(axis=0, subset=[3])
-    #     res_df = res_df[res_df[2] != "NONE"]
-    #
-    #     name_id_map = {}
-    #     if not res_df.empty:
-    #         df_names = df.drop_duplicates(subset=name_column)
-    #
-    #         for index, row in df_names.iterrows():
-    #
-    #             loc = res_df[1].isin([row[name_column]])
-    #             if loc.any():
-    #
-    #                 tax_res_df = res_df[loc]
-    #                 matched = tax_res_df[
-    #                     tax_res_df[3].str.startswith(self.target_taxonomy)
-    #                 ]
-    #
-    #                 if not matched.empty:
-    #
-    #                     best_match = self.get_best_match(
-    #                         src_taxid=row[id_column],
-    #                         src_name=row[name_column],
-    #                         df=matched.drop_duplicates(),
-    #                     )
-    #
-    #                     if best_match:
-    #                         name_id_map[row[name_column]] = best_match[0]
-    #
-    #         for index, row in df.iterrows():
-    #             name = row[name_column]
-    #             if name in name_id_map:
-    #                 tgt_ids.at[index] = name_id_map[name]
-    #
-    #         print(tgt_ids)
-    #
-    #     return tgt_ids
-
     def map(self, df, id_column, name_column):
-        """Using nomer taxonomic mapping capabilities, try to get IRIs in a given
-        target_taxonomy from taxon names and/or taxids.
+        """
+        Using nomer taxonomic mapping capabilities, try to get IRIs in the
+        target taxonomy from taxon names and/or identifiers in the source
+        taxonomy.
 
-        First, try to map taxon ids into the target taxonomy using wikidata-id-matcher
-        For each taxon with no match
-            Try to map the taxon name using globi-taxon-cache
-            For each taxon with no match
-                Try to map the taxon name using ncbi-taxon
+        First, validate taxon names/ids by querying the source taxonomy
+        Then, try to map taxon ids to the target taxonomy using wikidata-web
+        For each taxon without a match
+            Try to map the taxon name using globi
+            For each taxon without a match
+                Try to map the taxon name using ncbi
         """
 
+        # Drop duplicates for efficiency
         subset = [x for x in [id_column, name_column] if x]
         w_df = df.dropna(subset=subset).drop_duplicates(subset=subset)
 
         # Step 1 : validate taxa against the source taxonomy
         self.logger.debug(f"Validate taxa using info from columns {subset}")
-        valid_df, invalid_df = self.validate(w_df, id_column, name_column)
+        valid_df = self.validate(
+            w_df,
+            id_column,
+            name_column,
+            matcher=self.taxo_to_matcher[self.source_taxonomy],
+        )
         self.logger.debug(f"Found {valid_df.shape[0]}/{w_df.shape[0]} valid taxa")
-        # src_to_src_mappings is a dataframe containing mappings between ids
+
+        # src_to_src_mappings is a data frame containing mappings between ids
         # in the same source taxonomy. Indeed, a taxon can have several ids
         # in a single taxonomy, and the id used in the data may not be the preferred
         # id for this taxon.
@@ -576,21 +444,55 @@ class TaxonomicEntityMapper:
             & (valid_df["queryId"] != valid_df["matchId"])
         ]
 
-        # print(valid_df)
         mapped = []
 
         # Step 2 : map valid taxa using their id in the source taxonomy (if available)
+        # if id_column:
+        #     self.logger.debug(
+        #         f"Map {valid_df.shape[0]} unique taxa to target taxonomy {self.target_taxonomy} using wikidata-web"
+        #     )
+        #     mapped_df, others_df = self.source_id_to_target_id(
+        #         valid_df,
+        #         id_column="matchId",
+        #         # name_column="matchName",
+        #         matcher="wikidata-web",
+        #     )
+        #     self.logger.debug(
+        #         f"Found {mapped_df.shape[0]}/{valid_df.shape[0]} taxa in target taxonomy {self.target_taxonomy}"
+        #     )
+        #     mapped.append(mapped_df)
+        # else:
+        #     others_df = valid_df
         if id_column:
             self.logger.debug(
-                f"Map {valid_df.shape[0]} unique taxa to target taxonomy {self.target_taxonomy} using wikidata-taxon-id-web"
+                f"Map {valid_df.shape[0]} unique taxa to target taxonomy {self.target_taxonomy} using globi"
             )
             mapped_df, others_df = self.source_id_to_target_id(
                 valid_df,
                 id_column="matchId",
-                name_column="matchName",
+                # name_column="matchName",
+                matcher="globi",
             )
             self.logger.debug(
                 f"Found {mapped_df.shape[0]}/{valid_df.shape[0]} taxa in target taxonomy {self.target_taxonomy}"
+            )
+            mapped.append(mapped_df)
+        else:
+            others_df = valid_df
+
+        if not others_df.empty and id_column:
+            nb_taxa = others_df.shape[0]
+            self.logger.debug(
+                f"Map {nb_taxa} remaining taxa to target taxonomy {self.target_taxonomy} using wikidata-web"
+            )
+            mapped_df, others_df = self.source_id_to_target_id(
+                others_df,
+                id_column="matchId",
+                # name_column="matchName",
+                matcher="wikidata-web",
+            )
+            self.logger.debug(
+                f"Found {mapped_df.shape[0]}/{nb_taxa} taxa in target taxonomy {self.target_taxonomy}"
             )
             mapped.append(mapped_df)
         else:
@@ -600,13 +502,13 @@ class TaxonomicEntityMapper:
         if not others_df.empty and name_column:
             nb_taxa = others_df.shape[0]
             self.logger.debug(
-                f"Map {nb_taxa} remaining taxa to target taxonomy {self.target_taxonomy} using ncbi-taxon"
+                f"Map {nb_taxa} remaining taxa to target taxonomy {self.target_taxonomy} using ncbi"
             )
             mapped_df, others_df = self.source_name_to_target_id(
                 others_df,
                 id_column="matchId" if id_column else None,
                 name_column="matchName",
-                matcher="ncbi-taxon",
+                matcher="ncbi",
             )
             self.logger.debug(
                 f"Found {mapped_df.shape[0]}/{nb_taxa} taxa in target taxonomy {self.target_taxonomy}"
@@ -616,13 +518,13 @@ class TaxonomicEntityMapper:
         if not others_df.empty and name_column:
             nb_taxa = others_df.shape[0]
             self.logger.debug(
-                f"Map {nb_taxa} remaining taxa to target taxonomy {self.target_taxonomy} using globi-globalnames"
+                f"Map {nb_taxa} remaining taxa to target taxonomy {self.target_taxonomy} using globi"
             )
             mapped_df, others_df = self.source_name_to_target_id(
                 others_df,
                 id_column="matchId" if id_column else None,
-                name_column="queryName",  # TODO : change for matchName
-                matcher="globi-globalnames",
+                name_column="matchName",
+                matcher="globi",
             )
             self.logger.debug(
                 f"Found {mapped_df.shape[0]}/{nb_taxa} taxa in target taxonomy {self.target_taxonomy}"
@@ -656,12 +558,6 @@ class TaxonomicEntityMapper:
         return valid_id_series, pd.concat(
             [mapped_df, src_to_src_mappings], ignore_index=True
         )
-
-    # def scrub_taxname(self, name):
-    #     name = name.splname_columnit(" sp. ")[0]
-    #     name = name.split(" ssp. ")[0]
-    #     name = name.strip()
-    #     return " ".join(name.split())
 
 
 class TaxonomicMapper:

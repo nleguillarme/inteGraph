@@ -31,6 +31,7 @@ class FileExtractor(Extractor):
             else:
                 raise FileNotFoundError("file {} not found".format(filepath))
         # self.cfg.file_location = os.path.expandvars(self.cfg.file_location)
+        self.logger.info("New File Extractor with id {}".format(self.get_id()))
 
     def run(self):
         self.clean_data_dir()

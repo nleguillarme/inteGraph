@@ -14,3 +14,4 @@ patool
 Owlready2
 beautifulsoup4
 fsspec
+xlrd >= 1.0.0

@@ -67,7 +67,7 @@ class FileExtractorDAG(DAGTemplate):
 
         branch = BranchPythonOperator(
             task_id=self.get_dag_id() + "." + "is_txt_file",
-            provide_context=True,
+            # provide_context=True,
             python_callable=self.branch,
             op_kwargs={
                 "unpack_task": unpack.task_id,
@@ -88,7 +88,7 @@ class FileExtractorDAG(DAGTemplate):
             out_dir = self.extractor.get_ready_to_process_data_dir()
             convert = PythonOperator(
                 task_id=self.get_dag_id() + "." + "convert_to_data_frame",
-                python_callable=self.converter.convert,
+                python_callable=self.converter,  # .convert,
                 op_kwargs={
                     "f_in": f_in,
                     "out_dir": out_dir,

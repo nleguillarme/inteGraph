@@ -61,7 +61,7 @@ class CSV2RDFDAG(DAGTemplate):
         merge = PythonOperator(
             task_id=self.get_dag_id() + "." + "merge",
             python_callable=self.transformer.merge,
-            provide_context=True,
+            # provide_context=True,
             op_kwargs={"f_in_list": triples_files, "f_out": f_out},
             dag=dag,
         )
@@ -79,7 +79,7 @@ class CSV2RDFDAG(DAGTemplate):
                     + "."
                     + "map_taxonomic_entities_{}".format(chunk_num),
                     python_callable=self.transformer.map_taxonomic_entities,
-                    provide_context=True,
+                    # provide_context=True,
                     op_kwargs={
                         "f_in": f_in,
                         "f_out": f_out,
@@ -94,7 +94,7 @@ class CSV2RDFDAG(DAGTemplate):
                     + "."
                     + "map_other_entities_{}".format(chunk_num),
                     python_callable=self.transformer.map_other_entities,
-                    provide_context=True,
+                    # provide_context=True,
                     op_kwargs={
                         "f_in": f_out,
                         "f_out": f_out,
@@ -105,7 +105,7 @@ class CSV2RDFDAG(DAGTemplate):
             drop_na = PythonOperator(
                 task_id=self.get_dag_id() + "." + "drop_na_{}".format(chunk_num),
                 python_callable=self.transformer.drop_na,
-                provide_context=True,
+                # provide_context=True,
                 op_kwargs={
                     "f_in": f_out,
                     "f_out": f_out,
@@ -122,7 +122,7 @@ class CSV2RDFDAG(DAGTemplate):
             triplify = PythonOperator(
                 task_id=self.get_dag_id() + "." + "triplify_{}".format(chunk_num),
                 python_callable=self.transformer.triplify,
-                provide_context=True,
+                # provide_context=True,
                 op_kwargs={
                     "f_in": f_in,
                     "f_out": f_out,

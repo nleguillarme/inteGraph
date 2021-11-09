@@ -1,14 +1,18 @@
 #export INTEGRAPH__CONFIG__HOST_CONFIG_DIR=$(shell pwd)/test-config
 export INTEGRAPH__CONFIG__HOST_CONFIG_DIR=/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/integraph-config
-export INTEGRAPH__CONFIG__USER_ID = $(shell id -u)
-export INTEGRAPH__CONFIG__GROUP_ID = $(shell id -g)
-export INTEGRAPH__CONFIG__DOCKER_GROUP_ID = $(shell awk -F\: '/docker/ {print $3}' /etc/group)
-export INTEGRAPH__CONFIG__NOMER_CACHE_DIR = ${HOME}/.integraph/.nomer
+export INTEGRAPH__CONFIG__USER_ID=$(shell id -u)
+export INTEGRAPH__CONFIG__GROUP_ID=$(shell id -g)
+export INTEGRAPH__CONFIG__NOMER_CACHE_DIR=${HOME}/.integraph/.nomer
 export INTEGRAPH__INSTALL__INSTALL_DIR=${PWD}/install_files
+export INTEGRAPH__CONFIG__DOCKER_GROUP_ID=999
+#$(shell awk -F\: '/docker/ {print $3}' /etc/group)
 
 ################
 # Development
 ################
+
+clean:
+		rm -r "${INTEGRAPH__CONFIG__NOMER_CACHE_DIR}"
 
 test_dags:
 		python -m pytest tests/test_dags.py
@@ -28,9 +32,18 @@ test_main:
 # Production
 ################
 
-build:
-		# docker build https://github.com/stain/rdfsplit.git -t rdfsplit:latest
-		# Fork rdfsplit and change Dockerfile, build from our fork
+build: build_yarrrml_parser build_rmlmapper build_nomer build_webserver
+
+build_yarrrml_parser:
+		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache yarrrml-parser
+
+build_rmlmapper:
+		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache rmlmapper
+
+build_nomer:
+		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache nomer
+
+build_webserver:
 		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache webserver
 
 up:

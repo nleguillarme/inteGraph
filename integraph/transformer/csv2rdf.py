@@ -24,6 +24,7 @@ class CSV2RDF(Transformer):
         self.cfg = config
 
         self.cfg.rdf_format = "nq"  # f".{self.cfg.rdf_format}"
+        self.graph_id = self.cfg.graph_uri + "/" + self.cfg.internal_id
 
         # Input directory
         self.cfg.ready_to_process_data_dir = os.path.join(
@@ -194,9 +195,9 @@ class CSV2RDF(Transformer):
 
     def drop_na(self, f_in, f_out, f_na, **kwargs):
         df = read(f_in, sep=self.properties.delimiter)
-        print(self.uri_colnames)
+        # print(self.uri_colnames)
         df_mapped = df.dropna(subset=self.uri_colnames)
-        print(df_mapped)
+        # print(df_mapped)
         write(df_mapped, f_out, sep=self.properties.delimiter)
         df_na = df[df[self.uri_colnames].isnull().any(axis=1)]
         write(
@@ -231,7 +232,9 @@ class CSV2RDF(Transformer):
 
     # Merge RDF graphs
     def merge(self, f_in_list, f_out, **kwargs):
-        g = Graph()  # ConjunctiveGraph(identifier=self.cfg.graph_uri)
+        g = ConjunctiveGraph(
+            identifier=self.graph_id
+        )  # Graph(identifier=self.graph_id)
         n = 0
         for f_in in f_in_list:
             self.logger.info("Merge graph {}".format(f_in))
@@ -249,7 +252,7 @@ class CSV2RDF(Transformer):
                     new_o = BNode(value="{}_{}_{}".format(self.cfg.internal_id, n, o))
                 g.add((new_s, p, new_o))
             n += 1
-        g.serialize(destination=f_out, format="ntriples")
+        g.serialize(destination=f_out, format="nquads")
 
     def report_mapping(self, mapped_list, invalid_list, **kwargs):
         nb_mapped = 0

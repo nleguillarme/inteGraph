@@ -18,7 +18,7 @@ class OntologyMapper:
         self.onto = None
 
     def load_ontology(self):
-        print(self.cfg.ontology, self.cfg.ontologies)
+        # print(self.cfg.ontology, self.cfg.ontologies)
         onto_path = self.cfg.ontologies[self.cfg.ontology]
         # onto_path = f"file:///{os.path.abspath(self.cfg.ontology_file)}"
         if onto_path:
@@ -32,10 +32,16 @@ class OntologyMapper:
                 "Path to ontology {} not found".format(self.onto)
             )
 
-    def get_iri(self, entity):
-        iris = self.onto.search(label=entity)
+    def search(self, entity):
+        iris = self.onto.search(label=entity, _case_sensitive=False)
         if not iris:
-            iris = self.onto.search(label=entity.lower())
+            iris = self.onto.search(hasExactSynonym=entity, _case_sensitive=False)
+        if not iris:
+            iris = self.onto.search(hasRelatedSynonym=entity, _case_sensitive=False)
+        return iris
+
+    def get_iri(self, entity):
+        iris = self.search(entity)
         if not iris:
             self.logger.debug("No match for entity {}".format(entity))
             return None

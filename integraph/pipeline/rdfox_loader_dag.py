@@ -65,7 +65,7 @@ class RDFoxLoaderDAG(DAGTemplate):
 
         branch = BranchPythonOperator(
             task_id=self.get_dag_id() + "." + "test_connection_to_db",
-            provide_context=True,
+            # provide_context=True,
             python_callable=self.branch,
             op_kwargs={"continue_task": clean.task_id, "end_task": end.task_id},
             dag=dag,

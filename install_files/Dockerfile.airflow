@@ -23,10 +23,12 @@ USER root
 # The airflow user should have the same UID as the user running docker on the host system.
 ARG DOCKER_UID
 ARG DOCKER_GID
+RUN echo ${DOCKER_GID}
 RUN \
     : "${DOCKER_UID:?Build argument DOCKER_UID needs to be set and non-empty. Use 'make build' to set it automatically.}" \
     && usermod -u ${DOCKER_UID} airflow \
     && echo "Set airflow's uid to ${DOCKER_UID}" \
+    && echo ${DOCKER_GID} \
     && groupadd -g ${DOCKER_GID} docker \
     && usermod -aG docker airflow
 

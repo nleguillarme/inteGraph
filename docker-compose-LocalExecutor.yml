@@ -12,7 +12,7 @@ services:
 
     nomer:
       build:
-        context: ${INTEGRAPH__INSTALLATION__INSTALL_DIR}
+        context: ${INTEGRAPH__INSTALL__INSTALL_DIR}
         dockerfile: Dockerfile.nomer
       image: nomer:latest
 
@@ -86,11 +86,11 @@ services:
 
     webserver:
         build:
-          context: ${INSTALL_FILES_DIR}
+          context: ${INTEGRAPH__INSTALL__INSTALL_DIR}
           dockerfile: Dockerfile.airflow
           args:
-            - DOCKER_UID=${INTEGRAPH__CONFIGURATION__USER_ID}
-            - DOCKER_GID=${INTEGRAPH__CONFIGURATION__DOCKER_GROUP_ID}
+            - DOCKER_UID=${INTEGRAPH__CONFIG__USER_ID}
+            - DOCKER_GID=${INTEGRAPH__CONFIG__DOCKER_GROUP_ID}
         image: custom-airflow
         restart: on-failure
         depends_on:

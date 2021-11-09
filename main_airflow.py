@@ -93,7 +93,7 @@ scheduler_cfg = read_config(join(root_dir, "scheduler-config.yml"))
 
 # Read properties file
 properties = read_config(join(root_dir, scheduler_cfg.properties))
-print(properties)
+# print(properties)
 
 # Read loader config file
 loader_cfg_file = (
@@ -141,7 +141,7 @@ for src in sources:
     )
     try:
         dag = create_ETL_dag(
-            cfg=src_cfg + loader_cfg,
+            cfg=src_cfg + loader_cfg + properties,
             default_args=default_args,
             run_in_test_mode=run_in_test_mode,
         )

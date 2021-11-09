@@ -141,22 +141,25 @@ class RMLMappingEngine:
         else:
             raise FileNotFoundError(self.path_to_rml_rules)
 
+    # TODO : df_to_csv may become unnecessary when using Mapeathor, I can't say for now
     def df_to_csv(self, df, df_taxon, dst):
         sep = "\t"
         os.makedirs(dst, exist_ok=True)
+
+        columns = {
+            self.cfg.subject_column_name: "sub",
+            self.cfg.object_column_name: "obj",
+        }
+        if "predicate_column_name" in self.cfg:
+            columns[self.cfg.predicate_column_name] = "pred"
+        if "references_column_name" in self.cfg:
+            columns[self.cfg.references_column_name] = "references"
+
         df = df.rename(
-            columns={
-                self.cfg.subject_column_name: "sub",
-                self.cfg.predicate_column_name: "pred",
-                self.cfg.object_column_name: "obj",
-                self.cfg.references_column_name: "references",
-            }
+            columns=columns,
+            errors="ignore",
         )
         df["ID"] = df.index
-        # df["sub"] = df["sub"].str.lower()
-        # df["obj"] = df["obj"].str.lower()
         df.to_csv(os.path.join(dst, "s.tsv"), index=False, sep=sep)
         df_taxon["ID"] = df_taxon.index
-        # df_taxon["src_iri"] = df_taxon["src_iri"].str.lower()
-        # df_taxon["tgt_iri"] = df_taxon["tgt_iri"].str.lower()
         df_taxon.to_csv(os.path.join(dst, "taxon.tsv"), index=False, sep=sep)
