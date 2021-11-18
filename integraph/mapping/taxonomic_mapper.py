@@ -4,6 +4,7 @@ import os
 import docker
 import re
 import sys
+from tempfile import NamedTemporaryFile
 import numpy as np
 import pandas as pd
 from pandas.errors import EmptyDataError
@@ -25,6 +26,38 @@ class NoValidColumnException(Exception):
 
 class ConfigurationError(Exception):
     pass
+
+
+class GNParserHelper:
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        self.client = docker.from_env()
+        self.gnparser_image = self.client.images.get("gnames/gognparser:latest")
+
+    def get_canonical_name(self, f_in):
+
+        with open(f_in, "r") as f:
+            print(f.read())
+
+        volume = {
+            f_in: {"bind": f_in},
+        }
+
+        response = self.client.containers.run(
+            self.gnparser_image,
+            f"-j 20 {f_in}",
+            volumes=volume,
+            remove=True,
+        )
+        try:
+            print(response.decode("utf-8"))
+            res_df = pd.read_csv(StringIO(response.decode("utf-8")), sep=",")
+            print(res_df)
+        except EmptyDataError as e:
+            self.logger.error(e)
+            return False, None
+        else:
+            return True, res_df
 
 
 class NomerHelper:
@@ -110,6 +143,7 @@ class NomerHelper:
         query = query.strip("\n")
         query = query.replace("\t", "\\t")
         query = query.replace("\n", "\\n")
+        query = query.replace("'", " ")
         return f'"{query}"'
 
 
@@ -148,6 +182,7 @@ class TaxonomicEntityMapper:
 
         self.nomer = NomerHelper()
         self.taxo_to_matcher = {"GBIF": "gbif", "NCBI": "ncbi"}
+        self.gnparser = GNParserHelper()
 
     def format_id_column(self, df, id_column, taxonomy):
         """
@@ -206,14 +241,29 @@ class TaxonomicEntityMapper:
             # invalid_df = res_df[~mask]
 
         else:  # Validate names (all names are considered valid)
+            f_temp = NamedTemporaryFile(delete=True)  # False)
+            self.logger.debug(
+                f"Write names to {f_temp.name} for validation using gnparser"
+            )
+            names = [name.replace("\n", " ") for name in df_copy[name_column].to_list()]
+            names_str = "\n".join(names)
+            f_temp.write(names_str.encode())
+            f_temp.read()  # I don't know why but it is needed or sometimes the file appears empty when reading
+            success, canonical_names = self.gnparser.get_canonical_name(f_temp.name)
+            f_temp.close()
+
             valid_df = pd.DataFrame(
-                index=pd.Index(df_copy[name_column]).rename("externalId"),
                 columns=self.nomer.columns,
             )
             valid_df["queryName"] = df_copy[name_column].to_list()
             valid_df["matchType"] = "SAME_AS"
-            valid_df["matchName"] = df_copy[name_column].to_list()
-            # invalid_df = None
+            valid_df["matchName"] = valid_df["queryName"]
+            if success:
+                valid_df["matchName"] = canonical_names["CanonicalSimple"]
+            # valid_df.to_csv("valid_name.csv")
+            valid_df = valid_df.set_index("queryName", drop=False)
+            valid_df = valid_df.set_index(valid_df.index.rename("externalId"))
+            valid_df = valid_df.drop_duplicates(subset="matchName")
 
         return valid_df  # , invalid_df
 
@@ -255,7 +305,7 @@ class TaxonomicEntityMapper:
                 self.logger.error(
                     f"Found several target IDs for a single taxa in df: {mapped_df[duplicated]}"
                 )
-                mapped_df[duplicated].to_csv("duplicated.csv")
+                # mapped_df[duplicated].to_csv(f"duplicated_{id_column}.csv")
                 mapped_df = mapped_df[~duplicated]
                 # raise Exception("Unable to handle multiple candidates at id level.")
 
@@ -286,6 +336,9 @@ class TaxonomicEntityMapper:
         # df_copy = df.drop_duplicates(subset=[id_column, name_column])
         ref_col = id_column if id_column else name_column
 
+        duplicated = df.duplicated(subset=ref_col, keep=False)
+        # df.loc[duplicated].to_csv(f"duplicated_base_{ref_col}.csv")
+
         # Keep a reference to the index of the row containing the identifier
         query_to_ref_index_map = {row[ref_col]: index for index, row in df.iterrows()}
 
@@ -294,6 +347,7 @@ class TaxonomicEntityMapper:
             name_column=name_column,
             id_column=id_column,
         )
+
         res_df = self.nomer.ask_nomer(query, matcher=matcher)
 
         # Keep non empty matches with types SAME_AS or SYNONYM_OF in the target taxonomy
@@ -306,11 +360,15 @@ class TaxonomicEntityMapper:
             ]
 
             subset = "queryId" if id_column else "queryName"
+
             duplicated = mapped_df.duplicated(subset=[subset], keep=False)
+
             if duplicated.any():
                 self.logger.info(
                     f"Found several target entities for a single taxon in df :\n{mapped_df.loc[duplicated]}"
                 )
+                # mapped_df.loc[duplicated].to_csv(f"duplicated_{name_column}.csv")
+
                 if id_column:
                     keep_index = self.resolve_duplicates(
                         df, mapped_df[duplicated], id_column, query_to_ref_index_map
@@ -318,9 +376,33 @@ class TaxonomicEntityMapper:
                     for index in keep_index:
                         duplicated.loc[index] = False
                 else:
-                    self.logger.info(
-                        "Cannot resolve duplicates without a valid id column : discard the taxon."
-                    )
+                    # TODO : refactor
+                    # If we do not have access to the ifentifier for disambiguation,
+                    # we try to compare the lineages. Very often, we have the same
+                    # name designating the same entity, but at different ranks (e.g. genus and subgenus)
+                    # In this case, we keep the highest rank (e.g. genus)
+                    keep_index = []
+                    duplicates = mapped_df.loc[duplicated]
+                    unique_names = pd.unique(duplicates["matchName"])
+                    for name in unique_names:
+                        df_name = mapped_df[mapped_df["matchName"] == name]
+                        resolved = False
+                        if df_name.shape[0] == 2:
+                            lin = []
+                            for index, row in df_name.iterrows():
+                                lin.append((index, row["linNames"].split(" | ")))
+
+                            if set(lin[0][1]) == set(lin[1][1]):
+                                resolved = True
+                                # We keep the highest rank
+                                if len(lin[0][1]) < len(lin[1][1]):
+                                    duplicated.loc[lin[0][0]] = False
+                                else:
+                                    duplicated.loc[lin[1][0]] = False
+                        if not resolved:
+                            self.logger.debug(
+                                f"Cannot resolve duplicates : discard taxon {name}."
+                            )
 
             mapped_df = mapped_df[~duplicated]
             mapped_index = mapped_df[subset].map(query_to_ref_index_map)
@@ -425,6 +507,8 @@ class TaxonomicEntityMapper:
         subset = [x for x in [id_column, name_column] if x]
         w_df = df.dropna(subset=subset).drop_duplicates(subset=subset)
 
+        self.logger.debug(f"Found {w_df.shape[0]} unique taxa")
+
         # Step 1 : validate taxa against the source taxonomy
         self.logger.debug(f"Validate taxa using info from columns {subset}")
         valid_df = self.validate(
@@ -474,7 +558,7 @@ class TaxonomicEntityMapper:
                 matcher="globi",
             )
             self.logger.debug(
-                f"Found {mapped_df.shape[0]}/{valid_df.shape[0]} taxa in target taxonomy {self.target_taxonomy}"
+                f"Found {mapped_df.shape[0]}/{valid_df.shape[0]} taxa in target taxonomy {self.target_taxonomy} using globi"
             )
             mapped.append(mapped_df)
         else:
@@ -492,7 +576,7 @@ class TaxonomicEntityMapper:
                 matcher="wikidata-web",
             )
             self.logger.debug(
-                f"Found {mapped_df.shape[0]}/{nb_taxa} taxa in target taxonomy {self.target_taxonomy}"
+                f"Found {mapped_df.shape[0]}/{nb_taxa} taxa in target taxonomy {self.target_taxonomy} using wikidata-web"
             )
             mapped.append(mapped_df)
         else:
@@ -511,7 +595,7 @@ class TaxonomicEntityMapper:
                 matcher="ncbi",
             )
             self.logger.debug(
-                f"Found {mapped_df.shape[0]}/{nb_taxa} taxa in target taxonomy {self.target_taxonomy}"
+                f"Found {mapped_df.shape[0]}/{nb_taxa} taxa in target taxonomy {self.target_taxonomy} using ncbi"
             )
             mapped.append(mapped_df)
 
@@ -527,7 +611,7 @@ class TaxonomicEntityMapper:
                 matcher="globi",
             )
             self.logger.debug(
-                f"Found {mapped_df.shape[0]}/{nb_taxa} taxa in target taxonomy {self.target_taxonomy}"
+                f"Found {mapped_df.shape[0]}/{nb_taxa} taxa in target taxonomy {self.target_taxonomy} using globi"
             )
             mapped.append(mapped_df)
 

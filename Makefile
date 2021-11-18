@@ -19,13 +19,13 @@ test_dags:
 
 test:
 		mkdir -p "${INTEGRAPH__CONFIG__NOMER_CACHE_DIR}"
-		INTEGRAPH__EXEC__TEST_MODE="True"\
+		export INTEGRAPH__EXEC__TEST_MODE="True"\
 		#INTEGRAPH__CONFIG__HOST_CONFIG_DIR="$(shell pwd)/test-config"\
 		docker-compose -f docker-compose-LocalExecutor.yml up webserver
 
 test_main:
-		INTEGRAPH__EXEC__TEST_MODE="True"\
-	  INTEGRAPH__CONFIG__ROOT_CONFIG_DIR="/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/integraph-config"\
+		export INTEGRAPH__EXEC__TEST_MODE="True"\
+	  export INTEGRAPH__CONFIG__ROOT_CONFIG_DIR="/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/integraph-config"\
 		python main_airflow.py
 
 ################

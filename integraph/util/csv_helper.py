@@ -8,7 +8,7 @@ class ColumnNotFoundException(Exception):
 
 
 def read(file_path, sep="\t"):
-    df = pd.read_csv(file_path, sep=sep, dtype=str)
+    df = pd.read_csv(file_path, sep=sep, dtype=str, encoding_errors="ignore")
     return df
 
 
@@ -18,7 +18,7 @@ def write(df, file_path, sep="\t"):
 
 def read_csv_header(csv_file, delimiter=","):
     csv.field_size_limit(sys.maxsize)
-    with open(csv_file, "r") as f:
+    with open(csv_file, "r", errors="ignore") as f:
         reader = csv.reader(f, delimiter=delimiter)
         header = next(reader)
         f.close()
@@ -28,7 +28,7 @@ def read_csv_header(csv_file, delimiter=","):
 def get_nb_records_in_csv(csv_file, delimiter=",", with_header=True):
     csv.field_size_limit(sys.maxsize)
     print(csv_file)
-    with open(csv_file, newline="") as f:
+    with open(csv_file, newline="", errors="ignore") as f:
         reader = csv.reader(f, delimiter=delimiter)
         rec_count = sum(1 for row in reader)
         f.close()
@@ -51,5 +51,6 @@ def get_csv_file_reader(
         chunksize=chunksize,
         usecols=columns,
         dtype=dtype,
+        encoding_errors="ignore",
     )
     return df_reader

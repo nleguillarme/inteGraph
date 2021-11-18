@@ -7,7 +7,6 @@ import json
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from os.path import join, exists, isabs, isdir
-
 from integraph.util.config_helper import read_config
 from integraph.pipeline import PipelineFactory
 
@@ -42,7 +41,6 @@ def create_ETL_dag(
 
     ext_id, ext_dag = factory.get_extractor_dag(cfg, default_args, dag_name)
     tra_id, tra_dag = factory.get_transformer_dag(cfg, default_args, dag_name)
-    loa_id, loa_dag = factory.get_loader_dag(cfg, default_args, dag_name)
 
     schedule_interval = (
         cfg.scheduleInterval
@@ -63,6 +61,7 @@ def create_ETL_dag(
     if run_in_test_mode:
         start >> extract >> transform >> end
     else:
+        loa_id, loa_dag = factory.get_loader_dag(cfg, default_args, dag_name)
         load = SubDagOperator(task_id=loa_id.split(".")[-1], subdag=loa_dag, dag=dag)
         start >> extract >> transform >> load >> end
     return dag
@@ -83,7 +82,9 @@ default_args = {
 setup_logging()
 logger = logging.getLogger(__name__)
 
-run_in_test_mode = os.getenv("INTEGRAPH__EXEC__TEST_MODE", default=False)
+run_in_test_mode = os.getenv("INTEGRAPH__EXEC__TEST_MODE", default="False") == "True"
+if run_in_test_mode == True:
+    logger.info("Run in test mode")
 
 # Read scheduler config file to get properties file and jobs directory
 root_dir = os.getenv(

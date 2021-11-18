@@ -37,15 +37,15 @@
   },
 
   "loggers": {
-    "my_module": {
-      "level": "INFO",
+    "integraph": {
+      "level": "DEBUG",
       "handlers": ["console"],
       "propagate": false
     }
   },
 
   "root": {
-    "level": "DEBUG",
+    "level": "ERROR",
     "handlers": ["console", "info_file_handler", "error_file_handler"]
   }
 }

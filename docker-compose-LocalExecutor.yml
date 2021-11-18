@@ -120,6 +120,7 @@ services:
             - ${HOME}/.integraph/logs:/opt/airflow/logs
             - /var/run/docker.sock:/var/run/docker.sock
             - /usr/bin/docker:/usr/bin/docker
+            - /tmp:/tmp
             # Uncomment to include custom plugins
             # - ./plugins:/usr/local/airflow/plugins
         networks:
