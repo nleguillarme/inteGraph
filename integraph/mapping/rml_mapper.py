@@ -28,7 +28,7 @@ class RMLMappingEngine:
         self.mapper_image = self.client.images.get("rmlmapper:latest")
         self.parser_image = self.client.images.get("yarrrml-parser:latest")
 
-        self.path_to_yaml_rules = self.cfg.ontological_mapping_file
+        self.path_to_yaml_rules = self.cfg.mapping_file
         self.path_to_rml_rules = None
 
         self.local_config_dir = os.getenv("INTEGRAPH__CONFIG__HOST_CONFIG_DIR")
@@ -75,7 +75,7 @@ class RMLMappingEngine:
         volume = {w_dir: {"bind": "/data", "mode": "rw"}}
         self.logger.debug(f"run_rmlmapper_container : mount volume {volume}")
 
-        mapper_command = f"-m {remote_rml_path} -o {remote_rdf_path} -s nquads"
+        mapper_command = f"-m {remote_rml_path} -o {remote_rdf_path} -d -s nquads"
         self.logger.debug(f"run_rmlmapper_container : command {mapper_command}")
 
         return self.client.containers.run(
@@ -145,20 +145,20 @@ class RMLMappingEngine:
     def df_to_csv(self, df, df_taxon, dst):
         sep = "\t"
         os.makedirs(dst, exist_ok=True)
-
-        columns = {
-            self.cfg.subject_column_name: "sub",
-            self.cfg.object_column_name: "obj",
-        }
-        if "predicate_column_name" in self.cfg:
-            columns[self.cfg.predicate_column_name] = "pred"
-        if "references_column_name" in self.cfg:
-            columns[self.cfg.references_column_name] = "references"
-
-        df = df.rename(
-            columns=columns,
-            errors="ignore",
-        )
+        #
+        # columns = {
+        #     self.cfg.subject_column_name: "sub",
+        #     self.cfg.object_column_name: "obj",
+        # }
+        # if "predicate_column_name" in self.cfg:
+        #     columns[self.cfg.predicate_column_name] = "pred"
+        # if "references_column_name" in self.cfg:
+        #     columns[self.cfg.references_column_name] = "references"
+        #
+        # df = df.rename(
+        #     columns=columns,
+        #     errors="ignore",
+        # )
         df["ID"] = df.index
         df.to_csv(os.path.join(dst, "s.tsv"), index=False, sep=sep)
         df_taxon["ID"] = df_taxon.index

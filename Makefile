@@ -24,8 +24,8 @@ test:
 		docker-compose -f docker-compose-LocalExecutor.yml up webserver
 
 test_main:
-		export INTEGRAPH__EXEC__TEST_MODE="True"\
-	  export INTEGRAPH__CONFIG__ROOT_CONFIG_DIR="/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/integraph-config"\
+		export INTEGRAPH__EXEC__TEST_MODE="True" ;\
+	  export INTEGRAPH__CONFIG__ROOT_CONFIG_DIR="/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/integraph-config" ;\
 		python main_airflow.py
 
 ################

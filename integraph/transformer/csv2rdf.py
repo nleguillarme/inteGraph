@@ -8,9 +8,7 @@ from rdflib import Graph, ConjunctiveGraph
 from rdflib.term import BNode, URIRef
 
 from .transformer import Transformer
-from ..mapping import RMLMappingEngine
-from ..mapping import TaxonomicMapper
-from ..mapping import OntologyMapper
+from ..mapping import *
 from ..util.csv_helper import *
 from ..util.config_helper import read_config
 from ..util.file_helper import move_file_to_dir, clean_dir, get_basename_and_extension
@@ -49,6 +47,9 @@ class CSV2RDF(Transformer):
         self.properties.taxonomic_mapper_conf.run_on_localhost = (
             self.cfg.run_on_localhost
         )
+
+        self.uri_colnames = []
+
         self.taxonomic_mapper = None
         if "taxonomic_mapper_conf" in self.properties:
             if "prefix_file" in self.properties.taxonomic_mapper_conf:
@@ -59,6 +60,11 @@ class CSV2RDF(Transformer):
             self.taxonomic_mapper = TaxonomicMapper(
                 self.properties.taxonomic_mapper_conf
             )
+            self.uri_colnames += [
+                column_cfg.uri_column
+                for column_cfg in self.properties.taxonomic_mapper_conf.columns
+                # if column_cfg.required == True
+            ]
 
         # Create interaction mapper
         self.entity_mapper = None
@@ -69,22 +75,34 @@ class CSV2RDF(Transformer):
             self.properties.entity_mapper_conf.ontologies = self.cfg.ontologies
             self.entity_mapper = OntologyMapper(self.properties.entity_mapper_conf)
             self.entity_mapper.load_ontology()
-
-        self.uri_colnames = set(
-            [
+            self.uri_colnames += [
                 column_cfg.uri_column
                 for column_cfg in self.properties.entity_mapper_conf.columns
+                # if column_cfg.required == True
             ]
-            + [
+
+        # Create interaction mapper
+        self.manual_mapper = None
+        if (
+            "manual_mapper_conf" in self.properties
+            and "mapping_file" in self.properties.manual_mapper_conf
+        ):
+            self.properties.manual_mapper_conf.mapping_file = os.path.join(
+                self.cfg.source_root_dir,
+                self.properties.manual_mapper_conf.mapping_file,
+            )
+            self.manual_mapper = ManualMapper(self.properties.manual_mapper_conf)
+            self.uri_colnames += [
                 column_cfg.uri_column
-                for column_cfg in self.properties.taxonomic_mapper_conf.columns
+                for column_cfg in self.properties.manual_mapper_conf.columns
             ]
-        )
+
+        self.uri_colnames = set(self.uri_colnames)
 
         # Create triplifier
-        self.properties.triplifier_conf.ontological_mapping_file = os.path.join(
+        self.properties.triplifier_conf.mapping_file = os.path.join(
             self.cfg.source_root_dir,
-            self.properties.triplifier_conf.ontological_mapping_file,
+            self.properties.triplifier_conf.mapping_file,
         )
         self.triplifier = RMLMappingEngine(self.properties.triplifier_conf)
 
@@ -191,6 +209,9 @@ class CSV2RDF(Transformer):
     def map_other_entities(self, f_in, f_out, **kwargs):
         df = read(f_in, sep=self.properties.delimiter)
         df = self.entity_mapper.map(df)
+        if self.manual_mapper:
+            df = self.manual_mapper.map(df)
+            print(df)
         write(df, f_out, sep=self.properties.delimiter)
 
     def drop_na(self, f_in, f_out, f_na, **kwargs):
@@ -217,18 +238,6 @@ class CSV2RDF(Transformer):
         move_file_to_dir(
             os.path.join(wdir, os.path.basename(f_out)), self.cfg.triples_dir
         )
-
-    # def extract_taxonomy(self, f_in, f_out, **kwargs):
-    #     df_taxon = read(f_in, sep=self.properties.delimiter)
-    #     f_taxo = self.cfg.taxonomy_file
-    #     f_terms = os.path.join(os.path.dirname(f_in), "terms.txt")
-    #     df_taxon = read(f_in, sep=self.properties.delimiter)
-    #     terms = df_taxon["src_iri"].drop_duplicates().tolist()
-    #     terms += df_taxon["tgt_iri"].drop_duplicates().tolist()
-    #     terms = set(terms)
-    #     with open(f_terms, "w") as f:
-    #         f.write("\n".join(terms))
-    #     self.robot.extract(f_in=f_taxo, f_terms=f_terms, f_out=f_out)
 
     # Merge RDF graphs
     def merge(self, f_in_list, f_out, **kwargs):

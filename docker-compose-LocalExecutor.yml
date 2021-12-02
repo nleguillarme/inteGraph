@@ -77,8 +77,8 @@ services:
 
     postgres:
         image: postgres:9.6
-        networks:
-            - graphdbnet
+        # networks:
+        #     - graphdbnet
         environment:
             - POSTGRES_USER=airflow
             - POSTGRES_PASSWORD=airflow
@@ -123,8 +123,8 @@ services:
             - /tmp:/tmp
             # Uncomment to include custom plugins
             # - ./plugins:/usr/local/airflow/plugins
-        networks:
-            - graphdbnet
+        # networks:
+        #     - graphdbnet
         ports:
             - "8080:8080"
         command: webserver
@@ -134,9 +134,9 @@ services:
             timeout: 30s
             retries: 3
 
-networks:
-  graphdbnet:
-    external: true
+# networks:
+#   graphdbnet:
+#     external: true
 
 # volumes:
 #   shared_config:
