@@ -36,8 +36,8 @@ class GNParserHelper:
 
     def get_canonical_name(self, f_in):
 
-        with open(f_in, "r") as f:
-            print(f.read())
+        # with open(f_in, "r") as f:
+        #     print(f.read())
 
         volume = {
             f_in: {"bind": f_in},
@@ -50,9 +50,9 @@ class GNParserHelper:
             remove=True,
         )
         try:
-            print(response.decode("utf-8"))
+            # print(response.decode("utf-8"))
             res_df = pd.read_csv(StringIO(response.decode("utf-8")), sep=",")
-            print(res_df)
+            # print(res_df)
         except EmptyDataError as e:
             self.logger.error(e)
             return False, None
@@ -104,6 +104,8 @@ class NomerHelper:
         }
         self.logger.debug(f"run_nomer_container : mount volume {volume}")
 
+        # print(query)
+
         append_command = f"'echo {query} | nomer append {matcher}'"
         # self.logger.debug(f"run_nomer_container : command {append_command}")
 
@@ -144,6 +146,7 @@ class NomerHelper:
         query = query.replace("\t", "\\t")
         query = query.replace("\n", "\\n")
         query = query.replace("'", " ")
+        # print(query)
         return f'"{query}"'
 
 
@@ -181,7 +184,7 @@ class TaxonomicEntityMapper:
             self.target_taxonomy = self.default_taxonomy
 
         self.nomer = NomerHelper()
-        self.taxo_to_matcher = {"GBIF": "gbif", "NCBI": "ncbi"}
+        self.taxo_to_matcher = {"GBIF": "gbif", "NCBI": "ncbi", "IF": "indexfungorum"}
         self.gnparser = GNParserHelper()
 
     def format_id_column(self, df, id_column, taxonomy):
@@ -206,12 +209,16 @@ class TaxonomicEntityMapper:
         """
 
         # Drop duplicates for efficiency
+        # subset = [
+        #     col for col in [id_column, name_column] if col
+        # ]
         subset = id_column if id_column else name_column
         df_copy = df.copy().drop_duplicates(subset=subset)
 
         # For NCBI and GBIF, the id must be an integer
 
         if id_column:
+            # valid_df = df_copy
             valid_df = df_copy[df_copy[id_column].str.isnumeric()]
 
             if self.source_taxonomy:  # Format taxon id
@@ -224,21 +231,35 @@ class TaxonomicEntityMapper:
                     else id
                 )
 
-            query = self.nomer.df_to_query(
-                df=valid_df,
-                id_column=id_column,
-                name_column=name_column,
-            )
-            res_df = self.nomer.ask_nomer(query, matcher=matcher)
-            res_df.set_index(
-                pd.Index(res_df["queryId"]).rename("externalId"),
-                drop=False,
-                inplace=True,
-            )
-            mask = res_df["matchType"].isin(["SAME_AS", "SYNONYM_OF"])
-            valid_df = res_df[mask]
+            if not valid_df.empty:
 
-            # invalid_df = res_df[~mask]
+                query = self.nomer.df_to_query(
+                    df=valid_df,
+                    id_column=id_column,
+                    name_column=name_column,
+                )
+                res_df = self.nomer.ask_nomer(query, matcher=matcher)
+                res_df.set_index(
+                    pd.Index(res_df["queryId"]).rename("externalId"),
+                    drop=False,
+                    inplace=True,
+                )
+                mask = res_df["matchType"].isin(
+                    ["SAME_AS", "SYNONYM_OF", "HAS_ACCEPTED_NAME"]
+                )
+                valid_df = res_df[mask]
+                # invalid_df = res_df[~mask]
+                #
+                # if not invalid_df.empty and name_column:
+                #     invalid_df = invalid_df[id_column == None]
+                #
+                #     query = self.nomer.df_to_query(
+                #         df=invalid_df,
+                #         name_column=name_column,
+                #     )
+
+            else:
+                raise EmptyDataError("Empty query")
 
         else:  # Validate names (all names are considered valid)
             f_temp = NamedTemporaryFile(delete=True)  # False)
@@ -288,7 +309,9 @@ class TaxonomicEntityMapper:
 
         # Keep non empty matches with types SAME_AS or SYNONYM_OF in the target taxonomy
         mapped_df = res_df.dropna(axis=0, subset=["matchId"])
-        mapped_df = mapped_df[mapped_df["matchType"].isin(["SAME_AS", "SYNONYM_OF"])]
+        mapped_df = mapped_df[
+            mapped_df["matchType"].isin(["SAME_AS", "SYNONYM_OF", "HAS_ACCEPTED_NAME"])
+        ]
 
         if not mapped_df.empty:
             mapped_df = mapped_df[
@@ -298,15 +321,18 @@ class TaxonomicEntityMapper:
             # Check if a single taxon matches with several (distinct) ids in the target taxonomy
             # Sometimes, the same taxon is matched several times to the same target id,
             # so we start by dropping these duplicates, then looks for remaining duplicates.
-            duplicated = mapped_df.drop_duplicates(
+            mapped_df_dropped = mapped_df.drop_duplicates(
                 subset=["queryId", "matchId"], keep=False
-            ).duplicated(subset=["queryId"], keep=False)
+            )
+            duplicated = mapped_df_dropped.duplicated(subset=["queryId"], keep=False)
+            # print(mapped_df)
+            # print(duplicated)
             if duplicated.any():
                 self.logger.error(
-                    f"Found several target IDs for a single taxa in df: {mapped_df[duplicated]}"
+                    f"Found several target IDs for a single taxa in df: {mapped_df_dropped[duplicated]}"
                 )
                 # mapped_df[duplicated].to_csv(f"duplicated_{id_column}.csv")
-                mapped_df = mapped_df[~duplicated]
+                mapped_df = mapped_df_dropped[~duplicated]
                 # raise Exception("Unable to handle multiple candidates at id level.")
 
             # Reset index using the (id, index) map
@@ -352,7 +378,9 @@ class TaxonomicEntityMapper:
 
         # Keep non empty matches with types SAME_AS or SYNONYM_OF in the target taxonomy
         mapped_df = res_df.dropna(axis=0, subset=["matchId"])
-        mapped_df = mapped_df[mapped_df["matchType"].isin(["SAME_AS", "SYNONYM_OF"])]
+        mapped_df = mapped_df[
+            mapped_df["matchType"].isin(["SAME_AS", "SYNONYM_OF", "HAS_ACCEPTED_NAME"])
+        ]
 
         if not mapped_df.empty:
             mapped_df = mapped_df[
@@ -365,7 +393,7 @@ class TaxonomicEntityMapper:
 
             if duplicated.any():
                 self.logger.info(
-                    f"Found several target entities for a single taxon in df :\n{mapped_df.loc[duplicated]}"
+                    f"Found several target entities for a single taxon in df :\n{mapped_df[duplicated]}"
                 )
                 # mapped_df.loc[duplicated].to_csv(f"duplicated_{name_column}.csv")
 
@@ -382,7 +410,7 @@ class TaxonomicEntityMapper:
                     # name designating the same entity, but at different ranks (e.g. genus and subgenus)
                     # In this case, we keep the highest rank (e.g. genus)
                     keep_index = []
-                    duplicates = mapped_df.loc[duplicated]
+                    duplicates = mapped_df[duplicated]
                     unique_names = pd.unique(duplicates["matchName"])
                     for name in unique_names:
                         df_name = mapped_df[mapped_df["matchName"] == name]
@@ -506,6 +534,7 @@ class TaxonomicEntityMapper:
         # Drop duplicates for efficiency
         subset = [x for x in [id_column, name_column] if x]
         w_df = df.dropna(subset=subset).drop_duplicates(subset=subset)
+        # w_df = df.dropna(subset=subset, how="all").drop_duplicates(subset=subset)
 
         self.logger.debug(f"Found {w_df.shape[0]} unique taxa")
 
@@ -588,12 +617,14 @@ class TaxonomicEntityMapper:
             self.logger.debug(
                 f"Map {nb_taxa} remaining taxa to target taxonomy {self.target_taxonomy} using ncbi"
             )
+            # others_df.to_csv("others.csv")
             mapped_df, others_df = self.source_name_to_target_id(
                 others_df,
                 id_column="matchId" if id_column else None,
                 name_column="matchName",
                 matcher="ncbi",
             )
+            # mapped_df.to_csv("mapped.csv")
             self.logger.debug(
                 f"Found {mapped_df.shape[0]}/{nb_taxa} taxa in target taxonomy {self.target_taxonomy} using ncbi"
             )
@@ -633,6 +664,12 @@ class TaxonomicEntityMapper:
 
         src_tgt_map = {}
         for external_id in df[ref_col].unique():
+            print(
+                external_id,
+                valid_df[subset][external_id]
+                if external_id in valid_df.index
+                else None,
+            )
             valid_id = (
                 valid_df[subset][external_id] if external_id in valid_df.index else None
             )
@@ -661,6 +698,7 @@ class TaxonomicMapper:
         """
 
         def get_full_iri(taxid):
+            print(taxid)
             if pd.notnull(taxid):
                 items = taxid.split(":")
                 return self.prefix[items[0]] + items[-1]
@@ -699,6 +737,8 @@ class TaxonomicMapper:
             self.logger.info(
                 f"Found {nb_found}/{df.shape[0]} ids in target taxo {column_config.target_taxonomy}"
             )
+
+            print(tgt_id_series)
 
             df[column_config.uri_column] = df[column_config.uri_column].apply(
                 lambda x: get_full_iri(x)
