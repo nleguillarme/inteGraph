@@ -1,7 +1,7 @@
-from .fungaltraits_converter import FungalTraitsConverter
-from .rainford_converter import RainfordConverter
-from .larochelle1991_converter import LaRochelle1991Converter
-from .predator_prey_converter import PredatorPreyConverter
+# from .fungaltraits_converter import FungalTraitsConverter
+# from .rainford_converter import RainfordConverter
+# from .larochelle1991_converter import LaRochelle1991Converter
+# from .predator_prey_converter import PredatorPreyConverter
 
 import os
 import importlib.util

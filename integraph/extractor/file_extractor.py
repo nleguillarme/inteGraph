@@ -75,8 +75,12 @@ class FileExtractor(Extractor):
 
     def get_path_to_fetched_data(self):
         return os.path.join(
-            self.get_fetched_data_dir(), self.cfg.file_location.rsplit("/", 1)[1]
+            self.get_fetched_data_dir(),
+            self.cfg.internal_id + "." + self.cfg.data_format,
         )
+        # return os.path.join(
+        #     self.get_fetched_data_dir(), self.cfg.file_location.rsplit("/", 1)[1]
+        # )
 
     def get_fetched_data_dir(self):
         return self.cfg.fetched_data_dir

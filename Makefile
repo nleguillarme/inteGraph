@@ -3,8 +3,10 @@ export INTEGRAPH__CONFIG__HOST_CONFIG_DIR=/home/leguilln/workspace/KNOWLEDGE_INT
 export INTEGRAPH__CONFIG__USER_ID=$(shell id -u)
 export INTEGRAPH__CONFIG__GROUP_ID=$(shell id -g)
 export INTEGRAPH__CONFIG__NOMER_CACHE_DIR=${HOME}/.integraph/.nomer
+export INTEGRAPH__CONFIG__AIRFLOW_LOGS_DIR=${HOME}/.integraph/logs
 export INTEGRAPH__INSTALL__INSTALL_DIR=${PWD}/install_files
-export INTEGRAPH__CONFIG__DOCKER_GROUP_ID=999
+export INTEGRAPH__CONFIG__DOCKER_GROUP_ID=$(shell getent group docker | cut -d: -f3)
+#export INTEGRAPH__CONFIG__DOCKER_GROUP_ID=999
 #$(shell awk -F\: '/docker/ {print $3}' /etc/group)
 
 ################
@@ -34,6 +36,9 @@ test_main:
 
 build: build_yarrrml_parser build_rmlmapper build_nomer build_webserver
 
+build_gnparser:
+		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache gnparser
+
 build_yarrrml_parser:
 		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache yarrrml-parser
 
@@ -49,6 +54,7 @@ build_webserver:
 up:
 		#@FERNET_KEY="$(shell docker run custom-airflow python -c "from cryptography.fernet import Fernet; FERNET_KEY = Fernet.generate_key().decode(); print(FERNET_KEY)")"\
 		mkdir -p "${INTEGRAPH__CONFIG__NOMER_CACHE_DIR}"
+		mkdir -p "${INTEGRAPH__CONFIG__AIRFLOW_LOGS_DIR}"
 		docker-compose -f docker-compose-LocalExecutor.yml up webserver
 
 down:
