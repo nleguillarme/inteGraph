@@ -2,6 +2,12 @@ version: '2.1'
 
 services:
 
+    nomer:
+      build:
+        context: ${INTEGRAPH__INSTALL__INSTALL_DIR}
+        dockerfile: Dockerfile.nomer
+      image: nomer:latest
+
     gnparser:
       #build: https://github.com/gnames/gnparser.git
       image: gnames/gognparser:latest
@@ -14,11 +20,18 @@ services:
       build: https://github.com/RMLio/rmlmapper-java.git
       image: rmlmapper:latest
 
-    nomer:
+    mapeathor:
+      image: oegdataintegration/mapeathor:v1.5.3
+
+    sdm-rdfizer:
+      build: https://github.com/SDM-TIB/SDM-RDFizer.git
+      image: rdfizer:latest
+
+    morph-kgc:
       build:
         context: ${INTEGRAPH__INSTALL__INSTALL_DIR}
-        dockerfile: Dockerfile.nomer
-      image: nomer:latest
+        dockerfile: Dockerfile.morph
+      image: morph-kgc:latest
 
     # neo4j:
     #     build:

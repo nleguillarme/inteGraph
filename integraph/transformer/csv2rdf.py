@@ -104,6 +104,10 @@ class CSV2RDF(Transformer):
             self.cfg.source_root_dir,
             self.properties.triplifier_conf.mapping_file,
         )
+        self.properties.triplifier_conf.mapper_config_file = os.path.join(
+            self.cfg.source_root_dir,
+            self.properties.triplifier_conf.mapper_config_file,
+        )
         self.triplifier = RMLMappingEngine(self.properties.triplifier_conf)
 
         # self.robot = RobotHelper(config={})

@@ -30,11 +30,21 @@ test_main:
 	  export INTEGRAPH__CONFIG__ROOT_CONFIG_DIR="/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/integraph-config" ;\
 		python main_airflow.py
 
+test_rml_mapper:
+	export INTEGRAPH__CONFIG__ROOT_CONFIG_DIR="/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/integraph-config" ;\
+	python test_rml_mapper.py
+
 ################
 # Production
 ################
 
 build: build_yarrrml_parser build_rmlmapper build_nomer build_webserver
+
+build_rdfizer:
+		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache sdm-rdfizer
+
+build_morph_kgc:
+		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache morph-kgc
 
 build_gnparser:
 		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache gnparser
