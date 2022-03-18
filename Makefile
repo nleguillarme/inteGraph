@@ -20,9 +20,8 @@ test_dags:
 		python -m pytest tests/test_dags.py
 
 test:
-		mkdir -p "${INTEGRAPH__CONFIG__NOMER_CACHE_DIR}"
-		export INTEGRAPH__EXEC__TEST_MODE="True"\
-		#INTEGRAPH__CONFIG__HOST_CONFIG_DIR="$(shell pwd)/test-config"\
+		mkdir -p "${INTEGRAPH__CONFIG__NOMER_CACHE_DIR}" ;\
+		export INTEGRAPH__EXEC__TEST_MODE="True" ;\
 		docker-compose -f docker-compose-LocalExecutor.yml up webserver
 
 test_main:

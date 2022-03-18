@@ -57,13 +57,24 @@ class CSV2RDF(Transformer):
                     self.cfg.source_root_dir,
                     self.properties.taxonomic_mapper_conf.prefix_file,
                 )
-            self.taxonomic_mapper = TaxonomicMapper(
+            self.taxonomic_mapper = TaxonomicEntityMapper(  # TaxonomicMapper(
                 self.properties.taxonomic_mapper_conf
             )
+
+        self.taxonomic_validator = None
+        if "taxonomic_validator_conf" in self.properties:
+            if "prefix_file" in self.properties.taxonomic_validator_conf:
+                self.properties.taxonomic_validator_conf.prefix_file = os.path.join(
+                    self.cfg.source_root_dir,
+                    self.properties.taxonomic_validator_conf.prefix_file,
+                )
+            self.taxonomic_validator = TaxonomicEntityValidator(
+                self.properties.taxonomic_validator_conf
+            )
+
             self.uri_colnames += [
                 column_cfg.uri_column
-                for column_cfg in self.properties.taxonomic_mapper_conf.columns
-                # if column_cfg.required == True
+                for column_cfg in self.properties.taxonomic_validator_conf.columns
             ]
 
         # Create interaction mapper
@@ -75,10 +86,10 @@ class CSV2RDF(Transformer):
             self.properties.entity_mapper_conf.ontologies = self.cfg.ontologies
             self.entity_mapper = OntologyMapper(self.properties.entity_mapper_conf)
             self.entity_mapper.load_ontology()
+
             self.uri_colnames += [
                 column_cfg.uri_column
                 for column_cfg in self.properties.entity_mapper_conf.columns
-                # if column_cfg.required == True
             ]
 
         # Create interaction mapper
@@ -92,6 +103,7 @@ class CSV2RDF(Transformer):
                 self.properties.manual_mapper_conf.mapping_file,
             )
             self.manual_mapper = ManualMapper(self.properties.manual_mapper_conf)
+
             self.uri_colnames += [
                 column_cfg.uri_column
                 for column_cfg in self.properties.manual_mapper_conf.columns
@@ -109,12 +121,6 @@ class CSV2RDF(Transformer):
             self.properties.triplifier_conf.mapper_config_file,
         )
         self.triplifier = RMLMappingEngine(self.properties.triplifier_conf)
-
-        # self.robot = RobotHelper(config={})
-        # self.cfg.taxonomy_file = os.path.join(
-        #     self.cfg.ontologies, self.properties.taxonomy_file
-        # )
-        # print(self.cfg.taxonomy_file)
 
         self.logger.info("New CSV2RDF Transformer with id {}".format(self.get_id()))
 
@@ -204,25 +210,28 @@ class CSV2RDF(Transformer):
         clean_dir(self.cfg.processed_dir)
         os.rename(filepath, os.path.join(self.cfg.processed_dir, filename))
 
-    def map_taxonomic_entities(self, f_in, f_out, f_taxon, **kwargs):
+    def validate_taxonomic_entities(self, f_in, f_out, **kwargs):
         df = read(f_in, sep=self.properties.delimiter)
-        df, taxon_info_df = self.taxonomic_mapper.map(df)
+        df = self.taxonomic_validator.validate(df)
         write(df, f_out, sep=self.properties.delimiter)
-        write(taxon_info_df, f_taxon, sep=self.properties.delimiter)
+
+    def map_taxonomic_entities(self, f_in, f_out, **kwargs):  # , f_taxon, **kwargs):
+        df = read(f_in, sep=self.properties.delimiter)
+        df = self.taxonomic_mapper.map(df)
+        write(df, f_out, sep=self.properties.delimiter)
+        # write(taxon_info_df, f_taxon, sep=self.properties.delimiter)
 
     def map_other_entities(self, f_in, f_out, **kwargs):
         df = read(f_in, sep=self.properties.delimiter)
-        df = self.entity_mapper.map(df)
+        if self.entity_mapper:
+            df = self.entity_mapper.map(df)
         if self.manual_mapper:
             df = self.manual_mapper.map(df)
-            print(df)
         write(df, f_out, sep=self.properties.delimiter)
 
     def drop_na(self, f_in, f_out, f_na, **kwargs):
         df = read(f_in, sep=self.properties.delimiter)
-        # print(self.uri_colnames)
         df_mapped = df.dropna(subset=self.uri_colnames)
-        # print(df_mapped)
         write(df_mapped, f_out, sep=self.properties.delimiter)
         df_na = df[df[self.uri_colnames].isnull().any(axis=1)]
         write(
@@ -232,13 +241,10 @@ class CSV2RDF(Transformer):
         )
 
     # Validate data and generate RDF triples from each observation
-    def triplify(self, f_in, f_out, f_taxon, wdir, **kwargs):
-        # TODO : consider reusing triplifier from ontology-data-pipeline when
-        # interactions will be supported (see https://github.com/biocodellc/ontology-data-pipeline/issues/60)
-        # In that case, entity linking will have to be performed as a previous step (outside the pipeline preferably)
+    def triplify(self, f_in, f_out, wdir, **kwargs):  # f_taxon, wdir, **kwargs):
         df = read(f_in, sep=self.properties.delimiter)
-        df_taxon = read(f_taxon, sep=self.properties.delimiter)
-        self.triplifier.run_mapping(df, df_taxon, wdir, f_out)
+        # df_taxon = read(f_taxon, sep=self.properties.delimiter)
+        self.triplifier.map(df, wdir, f_out)  # ,df_taxon, wdir, f_out)
         move_file_to_dir(
             os.path.join(wdir, os.path.basename(f_out)), self.cfg.triples_dir
         )
@@ -252,7 +258,7 @@ class CSV2RDF(Transformer):
         for f_in in f_in_list:
             self.logger.info("Merge graph {}".format(f_in))
             tmp_g = Graph()
-            tmp_g.parse(f_in, format="nquads")
+            tmp_g.parse(f_in, format="nt")
             # A workaround for blank nodes collisions during graph merging
             # Prefix blank nodes with the name of the graph and the number of the chunk
             # See : https://rdflib.readthedocs.io/en/stable/merging.html
@@ -312,6 +318,14 @@ class CSV2RDF(Transformer):
             + self.properties.data_extension,
         )
 
+    def get_path_to_validated_chunk(self, num_chunk):
+        return os.path.join(
+            self.cfg.chunks_dir,
+            self.cfg.internal_id
+            + f"_{num_chunk}_validated"
+            + self.properties.data_extension,
+        )
+
     def get_path_to_mapped_chunk(self, num_chunk):
         return os.path.join(
             self.cfg.chunks_dir,
@@ -325,6 +339,14 @@ class CSV2RDF(Transformer):
             self.cfg.chunks_dir,
             self.cfg.internal_id
             + f"_{num_chunk}_invalid"
+            + self.properties.data_extension,
+        )
+
+    def get_path_to_valid_data(self, num_chunk):
+        return os.path.join(
+            self.cfg.chunks_dir,
+            self.cfg.internal_id
+            + f"_{num_chunk}_valid"
             + self.properties.data_extension,
         )
 
@@ -366,6 +388,9 @@ class CSV2RDF(Transformer):
 
     def with_taxonomic_entities_mapping(self):
         return self.taxonomic_mapper != None
+
+    def with_taxonomic_entities_validation(self):
+        return self.taxonomic_validator != None
 
     def with_other_entities_mapping(self):
         return self.entity_mapper != None

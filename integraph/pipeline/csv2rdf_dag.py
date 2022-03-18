@@ -61,7 +61,6 @@ class CSV2RDFDAG(DAGTemplate):
         merge = PythonOperator(
             task_id=self.get_dag_id() + "." + "merge",
             python_callable=self.transformer.merge,
-            # provide_context=True,
             op_kwargs={"f_in_list": triples_files, "f_out": f_out},
             dag=dag,
         )
@@ -69,9 +68,26 @@ class CSV2RDFDAG(DAGTemplate):
         for chunk_num in range(nb_chunks):
 
             f_in = self.transformer.get_path_to_chunk(chunk_num)
-            f_out = self.transformer.get_path_to_mapped_chunk(chunk_num)
-            f_na = self.transformer.get_path_to_invalid_data(chunk_num)
-            f_taxon = self.transformer.get_path_to_taxon_data(chunk_num)
+            f_out = self.transformer.get_path_to_validated_chunk(chunk_num)
+            # f_na = self.transformer.get_path_to_invalid_data(chunk_num)
+            # f_taxon = self.transformer.get_path_to_taxon_data(chunk_num)
+
+            if self.transformer.with_taxonomic_entities_validation():
+                validate_taxo = PythonOperator(
+                    task_id=self.get_dag_id()
+                    + "."
+                    + "validate_taxonomic_entities_{}".format(chunk_num),
+                    python_callable=self.transformer.validate_taxonomic_entities,
+                    op_kwargs={
+                        "f_in": f_in,
+                        "f_out": f_out,
+                    },
+                    dag=dag,
+                )
+
+            f_in = self.transformer.get_path_to_validated_chunk(chunk_num)
+            f_out = self.transformer.get_path_to_taxon_data(chunk_num)
+            # f_out = self.transformer.get_path_to_mapped_chunk(chunk_num)
 
             if self.transformer.with_taxonomic_entities_mapping():
                 map_taxo = PythonOperator(
@@ -79,14 +95,16 @@ class CSV2RDFDAG(DAGTemplate):
                     + "."
                     + "map_taxonomic_entities_{}".format(chunk_num),
                     python_callable=self.transformer.map_taxonomic_entities,
-                    # provide_context=True,
                     op_kwargs={
                         "f_in": f_in,
                         "f_out": f_out,
-                        "f_taxon": f_taxon,
+                        # "f_taxon": f_taxon,
                     },
                     dag=dag,
                 )
+
+            f_in = self.transformer.get_path_to_validated_chunk(chunk_num)
+            f_out = self.transformer.get_path_to_mapped_chunk(chunk_num)
 
             if self.transformer.with_other_entities_mapping():
                 map_other = PythonOperator(
@@ -94,20 +112,22 @@ class CSV2RDFDAG(DAGTemplate):
                     + "."
                     + "map_other_entities_{}".format(chunk_num),
                     python_callable=self.transformer.map_other_entities,
-                    # provide_context=True,
                     op_kwargs={
-                        "f_in": f_out,
+                        "f_in": f_in,
                         "f_out": f_out,
                     },
                     dag=dag,
                 )
 
+            f_in = self.transformer.get_path_to_mapped_chunk(chunk_num)
+            f_out = self.transformer.get_path_to_valid_data(chunk_num)
+            f_na = self.transformer.get_path_to_invalid_data(chunk_num)
+
             drop_na = PythonOperator(
                 task_id=self.get_dag_id() + "." + "drop_na_{}".format(chunk_num),
                 python_callable=self.transformer.drop_na,
-                # provide_context=True,
                 op_kwargs={
-                    "f_in": f_out,
+                    "f_in": f_in,
                     "f_out": f_out,
                     "f_na": f_na,
                 },
@@ -122,26 +142,18 @@ class CSV2RDFDAG(DAGTemplate):
             triplify = PythonOperator(
                 task_id=self.get_dag_id() + "." + "triplify_{}".format(chunk_num),
                 python_callable=self.transformer.triplify,
-                # provide_context=True,
                 op_kwargs={
                     "f_in": f_in,
                     "f_out": f_out,
-                    "f_taxon": f_taxon,
+                    # "f_taxon": f_taxon,
                     "wdir": wdir,
                 },
                 dag=dag,
             )
 
-            # f_taxonomy = self.transformer.get_path_to_taxonomy(chunk_num)
-            # extract = PythonOperator(
-            #     task_id=self.get_dag_id() + "." + "extract_taxo_{}".format(chunk_num),
-            #     python_callable=self.transformer.extract_taxonomy,
-            #     provide_context=True,
-            #     op_kwargs={"f_in": f_taxon, "f_out": f_taxonomy},
-            #     dag=dag,
-            # )
-
             prev = split
+            if self.transformer.with_taxonomic_entities_validation():
+                prev = prev >> validate_taxo
             if self.transformer.with_taxonomic_entities_mapping():
                 prev = prev >> map_taxo
             if self.transformer.with_other_entities_mapping():
