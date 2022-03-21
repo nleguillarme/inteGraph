@@ -52,10 +52,10 @@ class CSV2RDFDAG(DAGTemplate):
         )
 
         nb_chunks = self.transformer.get_nb_chunks()
-        triples_files = [
-            self.transformer.get_path_to_triples(chunk_num)
-            for chunk_num in range(nb_chunks)
-        ]
+        triples_files = self.transformer.get_triples_files()  # [
+        #     self.transformer.get_path_to_triples(chunk_num)
+        #     for chunk_num in range(nb_chunks)
+        # ]
 
         f_out = self.transformer.get_path_to_graph()
         merge = PythonOperator(
@@ -136,7 +136,7 @@ class CSV2RDFDAG(DAGTemplate):
 
             f_in = f_out
             f_out = self.transformer.get_path_to_triples(chunk_num)
-            f_taxon = self.transformer.get_path_to_taxon_data(chunk_num)
+            f_taxa = self.transformer.get_path_to_taxon_data(chunk_num)
             wdir = self.transformer.get_mapping_working_dir(chunk_num)
 
             triplify = PythonOperator(
@@ -145,7 +145,7 @@ class CSV2RDFDAG(DAGTemplate):
                 op_kwargs={
                     "f_in": f_in,
                     "f_out": f_out,
-                    # "f_taxon": f_taxon,
+                    "f_taxa": f_taxa,
                     "wdir": wdir,
                 },
                 dag=dag,

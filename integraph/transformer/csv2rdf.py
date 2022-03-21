@@ -6,7 +6,7 @@ from math import ceil
 from os import listdir
 from rdflib import Graph, ConjunctiveGraph
 from rdflib.term import BNode, URIRef
-
+from glob import glob
 from .transformer import Transformer
 from ..mapping import *
 from ..util.csv_helper import *
@@ -21,6 +21,8 @@ class CSV2RDF(Transformer):
         self.logger = logging.getLogger(__name__)
         self.cfg = config
 
+        self.delimiter = "\t"
+        self.file_extension = "tsv"
         self.cfg.rdf_format = "nq"  # f".{self.cfg.rdf_format}"
         self.graph_id = self.cfg.graph_uri + "/" + self.cfg.internal_id
 
@@ -183,7 +185,7 @@ class CSV2RDF(Transformer):
                 csv_file=filepath,
                 columns=columns,
                 dtype=dtype,
-                delimiter=self.properties.delimiter,
+                delimiter=self.cfg.delimiter,
                 chunksize=chunksize,
             )
         else:
@@ -198,7 +200,7 @@ class CSV2RDF(Transformer):
         for df in chunk_reader:
             chunk_filepath = self.get_path_to_chunk(chunk_count)
             self.logger.debug(f"Write chunk to {chunk_filepath}")
-            write(df, chunk_filepath, sep=self.properties.delimiter)
+            write(df, chunk_filepath, sep=self.delimiter)
             chunk_count += 1
         if chunk_count != self.get_nb_chunks():
             raise AssertionError(
@@ -211,42 +213,50 @@ class CSV2RDF(Transformer):
         os.rename(filepath, os.path.join(self.cfg.processed_dir, filename))
 
     def validate_taxonomic_entities(self, f_in, f_out, **kwargs):
-        df = read(f_in, sep=self.properties.delimiter)
+        df = read(f_in, sep=self.delimiter)
         df = self.taxonomic_validator.validate(df)
-        write(df, f_out, sep=self.properties.delimiter)
+        write(df, f_out, sep=self.delimiter)
 
     def map_taxonomic_entities(self, f_in, f_out, **kwargs):  # , f_taxon, **kwargs):
-        df = read(f_in, sep=self.properties.delimiter)
+        df = read(f_in, sep=self.delimiter)
         df = self.taxonomic_mapper.map(df)
-        write(df, f_out, sep=self.properties.delimiter)
+        write(df, f_out, sep=self.delimiter)
         # write(taxon_info_df, f_taxon, sep=self.properties.delimiter)
 
     def map_other_entities(self, f_in, f_out, **kwargs):
-        df = read(f_in, sep=self.properties.delimiter)
+        df = read(f_in, sep=self.delimiter)
         if self.entity_mapper:
             df = self.entity_mapper.map(df)
         if self.manual_mapper:
             df = self.manual_mapper.map(df)
-        write(df, f_out, sep=self.properties.delimiter)
+        write(df, f_out, sep=self.delimiter)
 
     def drop_na(self, f_in, f_out, f_na, **kwargs):
-        df = read(f_in, sep=self.properties.delimiter)
+        df = read(f_in, sep=self.delimiter)
         df_mapped = df.dropna(subset=self.uri_colnames)
-        write(df_mapped, f_out, sep=self.properties.delimiter)
+        write(df_mapped, f_out, sep=self.delimiter)
         df_na = df[df[self.uri_colnames].isnull().any(axis=1)]
         write(
             df_na,
             f_na,
-            sep=self.properties.delimiter,
+            sep=self.delimiter,
         )
 
     # Validate data and generate RDF triples from each observation
-    def triplify(self, f_in, f_out, wdir, **kwargs):  # f_taxon, wdir, **kwargs):
-        df = read(f_in, sep=self.properties.delimiter)
-        # df_taxon = read(f_taxon, sep=self.properties.delimiter)
+    def triplify(
+        self, f_in, f_taxa, f_out, wdir, **kwargs
+    ):  # f_taxon, wdir, **kwargs):
+        df = read(f_in, sep=self.delimiter)
+        # df_taxon = read(f_taxon, sep=self.delimiter)
         self.triplifier.map(df, wdir, f_out)  # ,df_taxon, wdir, f_out)
         move_file_to_dir(
             os.path.join(wdir, os.path.basename(f_out)), self.cfg.triples_dir
+        )
+        df_taxa = read(f_taxa, sep=self.delimiter)
+        g = self.taxonomic_mapper.df_to_triples(df_taxa)
+        filename = os.path.basename(f_taxa).split(".")[0] + f".{self.cfg.rdf_format}"
+        g.serialize(
+            destination=os.path.join(self.cfg.triples_dir, filename), format="nt"
         )
 
     # Merge RDF graphs
@@ -277,10 +287,10 @@ class CSV2RDF(Transformer):
         nb_mapped = 0
         nb_invalid = 0
         for f in mapped_list:
-            df = read(f, sep=self.properties.delimiter)
+            df = read(f, sep=self.delimiter)
             nb_mapped += df.shape[0]
         for f in invalid_list:
-            df = read(f, sep=self.properties.delimiter)
+            df = read(f, sep=self.delimiter)
             nb_invalid += df.shape[0]
         nb_entities = nb_mapped + nb_invalid
         percent_mapped = 100.0 * nb_mapped / nb_entities
@@ -313,49 +323,37 @@ class CSV2RDF(Transformer):
     def get_path_to_chunk(self, num_chunk):
         return os.path.join(
             self.cfg.chunks_dir,
-            self.cfg.internal_id
-            + "_{}".format(num_chunk)
-            + self.properties.data_extension,
+            self.cfg.internal_id + f"_{num_chunk}.{self.file_extension}",
         )
 
     def get_path_to_validated_chunk(self, num_chunk):
         return os.path.join(
             self.cfg.chunks_dir,
-            self.cfg.internal_id
-            + f"_{num_chunk}_validated"
-            + self.properties.data_extension,
+            self.cfg.internal_id + f"_{num_chunk}_validated.{self.file_extension}",
         )
 
     def get_path_to_mapped_chunk(self, num_chunk):
         return os.path.join(
             self.cfg.chunks_dir,
-            self.cfg.internal_id
-            + "_{}_mapped".format(num_chunk)
-            + self.properties.data_extension,
+            self.cfg.internal_id + f"_{num_chunk}_mapped.{self.file_extension}",
         )
 
     def get_path_to_invalid_data(self, num_chunk):
         return os.path.join(
             self.cfg.chunks_dir,
-            self.cfg.internal_id
-            + f"_{num_chunk}_invalid"
-            + self.properties.data_extension,
+            self.cfg.internal_id + f"_{num_chunk}_invalid.{self.file_extension}",
         )
 
     def get_path_to_valid_data(self, num_chunk):
         return os.path.join(
             self.cfg.chunks_dir,
-            self.cfg.internal_id
-            + f"_{num_chunk}_valid"
-            + self.properties.data_extension,
+            self.cfg.internal_id + f"_{num_chunk}_valid.{self.file_extension}",
         )
 
     def get_path_to_taxon_data(self, num_chunk):
         return os.path.join(
             self.cfg.chunks_dir,
-            self.cfg.internal_id
-            + "_{}_taxa".format(num_chunk)
-            + self.properties.data_extension,
+            self.cfg.internal_id + f"_{num_chunk}_taxa.{self.file_extension}",
         )
 
     def get_path_to_triples(self, num_chunk):
@@ -363,6 +361,9 @@ class CSV2RDF(Transformer):
             self.cfg.triples_dir,
             self.cfg.internal_id + f"_{num_chunk}.{self.cfg.rdf_format}",
         )
+
+    def get_triples_files(self):
+        return glob(os.path.join(self.cfg.triples_dir, f"*.{self.cfg.rdf_format}"))
 
     def get_mapping_working_dir(self, num_chunk):
         return os.path.join(
@@ -374,11 +375,11 @@ class CSV2RDF(Transformer):
             self.cfg.unreasoned_dir, self.cfg.internal_id + f".{self.cfg.rdf_format}"
         )
 
-    def get_path_to_taxonomy(self, num_chunk):
-        return os.path.join(
-            self.cfg.unreasoned_dir,
-            self.cfg.internal_id + "_taxonomy_{}.owl".format(num_chunk),
-        )
+    # def get_path_to_taxonomy(self, num_chunk):
+    #     return os.path.join(
+    #         self.cfg.unreasoned_dir,
+    #         self.cfg.internal_id + "_taxonomy_{}.owl".format(num_chunk),
+    #     )
 
     def get_ready_to_process_data_dir(self):
         return self.cfg.ready_to_process_data_dir
@@ -396,21 +397,21 @@ class CSV2RDF(Transformer):
         return self.entity_mapper != None
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="csv2rdf transformer command line interface."
-    )
-
-    parser.add_argument("cfg_file", help="YAML configuration file.")
-    args = parser.parse_args()
-
-    config = read_config(args.cfg_file)
-    # config.jars_location = "jars"
-    config.run_on_localhost = True
-    config.output_dir = os.path.join(config.source_root_dir, "output")
-    process = CSV2RDF(config)
-    process.run()
-
-
-if __name__ == "__main__":
-    main()
+# def main():
+#     parser = argparse.ArgumentParser(
+#         description="csv2rdf transformer command line interface."
+#     )
+#
+#     parser.add_argument("cfg_file", help="YAML configuration file.")
+#     args = parser.parse_args()
+#
+#     config = read_config(args.cfg_file)
+#     # config.jars_location = "jars"
+#     config.run_on_localhost = True
+#     config.output_dir = os.path.join(config.source_root_dir, "output")
+#     process = CSV2RDF(config)
+#     process.run()
+#
+#
+# if __name__ == "__main__":
+#     main()

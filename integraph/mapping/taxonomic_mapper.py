@@ -389,6 +389,35 @@ class TaxonomicEntityMapper:
         self.keep_taxo = ["NCBI", "GBIF", "IF"]
         self.nomer = NomerHelper()
 
+    def df_to_triples(self, df):
+        from rdflib import Graph, URIRef, Literal
+        from rdflib.namespace import RDFS, OWL
+
+        g = Graph()
+        for index, row in df.iterrows():
+            if row["queryIRI"] != row["iri"]:
+                g.add((URIRef(row["queryIRI"]), OWL.sameAs, URIRef(row["iri"])))
+                g.add((URIRef(row["queryIRI"]), RDFS.label, Literal(row["queryName"])))
+            if row["matchId"].split(":")[0].startswith("NCBI"):
+                taxid = row["matchId"].split(":")[-1]
+                g.add(
+                    (
+                        URIRef(row["queryIRI"]),
+                        OWL.sameAs,
+                        URIRef(f"http://purl.obolibrary.org/obo/NCBITaxon_{taxid}"),
+                    )
+                )
+            g.add((URIRef(row["iri"]), RDFS.label, Literal(row["matchName"])))
+            if pd.notna(row["matchRank"]):
+                g.add(
+                    (
+                        URIRef(row["iri"]),
+                        URIRef("http://purl.obolibrary.org/obo/ncbitaxon#has_rank"),
+                        Literal(row["matchRank"]),
+                    )
+                )
+        return g
+
     def map(self, df):
         """For a subset of columns (e.g. consumers and resources),
         try to map taxon ids and/or names to IRIs in a target taxonomy
