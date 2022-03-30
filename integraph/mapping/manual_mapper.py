@@ -26,8 +26,18 @@ class ManualMapper:
             map = {}
             if column_cfg.uri_column not in df.columns:
                 df[column_cfg.uri_column] = None
-            df = df.dropna(subset=[column_cfg.column_name])
-            entities = df[df[column_cfg.uri_column].isnull()][column_cfg.column_name]
+            print(df[column_cfg.column_name])
+            df_dropped = df.dropna(subset=[column_cfg.column_name])
+            print(df_dropped[column_cfg.column_name])
+            print(df_dropped[column_cfg.uri_column].isnull())
+            print(
+                df_dropped[df_dropped[column_cfg.uri_column].isnull()][
+                    column_cfg.column_name
+                ]
+            )
+            entities = df_dropped[df_dropped[column_cfg.uri_column].isnull()][
+                column_cfg.column_name
+            ]
             unique = entities.unique()
             self.logger.info(
                 f"Start mapping {len(unique)} unique entities in column {column_cfg.column_name}"

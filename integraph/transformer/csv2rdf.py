@@ -77,6 +77,7 @@ class CSV2RDF(Transformer):
             self.uri_colnames += [
                 column_cfg.uri_column
                 for column_cfg in self.properties.taxonomic_validator_conf.columns
+                if not ("required" in column_cfg and column_cfg.required == False)
             ]
 
         # Create interaction mapper
@@ -92,6 +93,7 @@ class CSV2RDF(Transformer):
             self.uri_colnames += [
                 column_cfg.uri_column
                 for column_cfg in self.properties.entity_mapper_conf.columns
+                if not ("required" in column_cfg and column_cfg.required == False)
             ]
 
         # Create interaction mapper
@@ -109,6 +111,7 @@ class CSV2RDF(Transformer):
             self.uri_colnames += [
                 column_cfg.uri_column
                 for column_cfg in self.properties.manual_mapper_conf.columns
+                if not ("required" in column_cfg and column_cfg.required == False)
             ]
 
         self.uri_colnames = set(self.uri_colnames)

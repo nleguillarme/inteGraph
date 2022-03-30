@@ -1,0 +1,17 @@
+FROM ubuntu:20.04
+
+USER root
+
+# Python 3.8
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends nano wget git curl less psmisc && \
+    apt-get install -y --no-install-recommends python3.8 python3-pip python3-setuptools && \
+    pip3 install --upgrade pip && \
+    apt-get clean
+
+RUN pip3 install morph-kgc
+RUN mkdir /data
+
+WORKDIR /data
+
+ENTRYPOINT ["python3", "-m", "morph_kgc"]

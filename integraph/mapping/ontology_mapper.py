@@ -34,7 +34,11 @@ class OntologyMapper:
                 f"Start mapping {len(unique)} unique entities in column {column_cfg.column_name}"
             )
             for entity in unique:
-                res = self.get_iri(entity)
+                try:
+                    res = self.get_iri(entity)
+                except MultipleMatchesException as e:
+                    self.logger.error(e)
+                    res = None
                 map[entity] = (
                     res["value"]
                     if (res and res["type"] == "uri" and res["value"])
