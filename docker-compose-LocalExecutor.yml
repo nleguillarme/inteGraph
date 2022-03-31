@@ -113,9 +113,11 @@ services:
         depends_on:
             - postgres
             - gnparser
-            - yarrrml-parser
-            - rmlmapper
+            # - yarrrml-parser
+            # - rmlmapper
             - nomer
+            - mapeathor
+            - morph-kgc
         environment:
             - AIRFLOW__CORE__EXECUTOR=LocalExecutor
             - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True
