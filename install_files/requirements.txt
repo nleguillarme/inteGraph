@@ -3,7 +3,7 @@ requests_cache
 numpy
 requests
 requests-file
-pandas
+pandas >= 1.4.0
 pytest
 rdflib
 SPARQLWrapper

@@ -21,7 +21,7 @@ services:
       image: rmlmapper:latest
 
     mapeathor:
-      image: oegdataintegration/mapeathor:v1.5.3
+      image: oegdataintegration/mapeathor:latest
 
     sdm-rdfizer:
       build: https://github.com/SDM-TIB/SDM-RDFizer.git

@@ -29,6 +29,7 @@ class GraphDBLoader(Loader):
         self.cfg = config
         self.cfg.rdf_format = "nq"
         self.base_url = f"http://{self.cfg.db_host}:{self.cfg.db_port}"
+        self.auth = (self.cfg.db_user, self.cfg.db_password)
         self.headers = {"Content-Type": "application/n-quads"}
         self.cfg.graph_dir = os.path.join(self.cfg.output_dir, "graph")
         self.logger.info("New GraphDB Loader with id {}".format(self.get_id()))
@@ -54,7 +55,9 @@ class GraphDBLoader(Loader):
 
     def test_connection_to_db(self):
         r = requests.get(
-            self.base_url + "/rest/repositories", headers={"Accept": "application/json"}
+            self.base_url + "/rest/repositories",
+            headers={"Accept": "application/json"},
+            auth=self.auth,
         )
         r.raise_for_status()
         repo_list = r.json()
@@ -73,6 +76,7 @@ class GraphDBLoader(Loader):
                 self.base_url + f"/repositories/{self.cfg.repository_id}/statements",
                 headers=self.headers,
                 data=open(file, "rb"),
+                auth=self.auth,
             )
             r.raise_for_status()
             # GraphDB does not return any confirmation message
@@ -98,4 +102,3 @@ class GraphDBLoader(Loader):
 
     def clean_split_dir(self, **kwargs):
         clean_dir(self.get_split_dir())
-        # clean_dir(self.cfg.shared_dir_for_source)

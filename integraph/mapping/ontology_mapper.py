@@ -27,8 +27,10 @@ class OntologyMapper:
             map = {}
             if column_cfg.uri_column not in df.columns:
                 df[column_cfg.uri_column] = None
-            df = df.dropna(subset=[column_cfg.column_name])
-            entities = df[df[column_cfg.uri_column].isnull()][column_cfg.column_name]
+            temp_df = df.dropna(subset=[column_cfg.column_name])
+            entities = temp_df[temp_df[column_cfg.uri_column].isnull()][
+                column_cfg.column_name
+            ]
             unique = entities.unique()
             self.logger.info(
                 f"Start mapping {len(unique)} unique entities in column {column_cfg.column_name}"
@@ -81,4 +83,6 @@ class OntologyMapper:
             iris = self.onto.search(hasExactSynonym=entity, _case_sensitive=False)
         if not iris:
             iris = self.onto.search(hasRelatedSynonym=entity, _case_sensitive=False)
+        if not iris:
+            iris = self.onto.search(hasBroadSynonym=entity, _case_sensitive=False)
         return iris

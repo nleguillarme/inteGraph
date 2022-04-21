@@ -32,128 +32,6 @@ class ConfigurationError(Exception):
     pass
 
 
-# class GNParserHelper:
-#     def __init__(self):
-#         self.logger = logging.getLogger(__name__)
-#         self.client = docker.from_env()
-#         self.gnparser_image = self.client.images.get("gnames/gognparser:latest")
-#
-#     def get_canonical_name(self, f_in):
-#
-#         # with open(f_in, "r") as f:
-#         #     print(f.read())
-#
-#         volume = {
-#             f_in: {"bind": f_in},
-#         }
-#
-#         response = self.client.containers.run(
-#             self.gnparser_image,
-#             f"-j 20 {f_in}",
-#             volumes=volume,
-#             remove=True,
-#         )
-#         try:
-#             # print(response.decode("utf-8"))
-#             res_df = pd.read_csv(StringIO(response.decode("utf-8")), sep=",")
-#             # print(res_df)
-#         except EmptyDataError as e:
-#             self.logger.error(e)
-#             return False, None
-#         else:
-#             return True, res_df
-
-
-# class NomerHelper:
-#     def __init__(self):
-#         self.logger = logging.getLogger(__name__)
-#         self.client = docker.from_env()
-#         self.nomer_image = self.client.images.get("nomer:latest")
-#         self.nomer_cache_dir = os.getenv("INTEGRAPH__CONFIG__NOMER_CACHE_DIR")
-#         self.columns = [
-#             "queryId",
-#             "queryName",
-#             "matchType",
-#             "matchId",
-#             "matchName",
-#             "matchRank",
-#             "alternativeNames",
-#             "linNames",
-#             "linIds",
-#             "linRanks",
-#             "iri",
-#             "lastCol",
-#         ]
-#
-#     def ask_nomer(self, query, matcher):
-#         """Send query to nomer and parse nomer response.
-#
-#         Returns a DataFrame.
-#         """
-#         while True:
-#             response = self.run_nomer_container(query, matcher=matcher)
-#             not_empty, res_df = self.parse_nomer_response(response)
-#             if not_empty:
-#                 return res_df
-#             else:
-#                 self.logger.debug(f"Nomer raised EmptyDataError : try again.")
-#
-#     def run_nomer_container(self, query, matcher):
-#         """Run pynomer append command in Docker container.
-#
-#         See pynomer documentation : https://github.com/nleguillarme/pynomer.
-#         """
-#         volume = {
-#             os.path.abspath(self.nomer_cache_dir): {"bind": "/.nomer", "mode": "rw"},
-#         }
-#         self.logger.debug(f"run_nomer_container : mount volume {volume}")
-#
-#         # print(query)
-#
-#         append_command = f"'echo {query} | nomer append {matcher}'"
-#         # self.logger.debug(f"run_nomer_container : command {append_command}")
-#
-#         return self.client.containers.run(
-#             self.nomer_image,
-#             append_command,
-#             volumes=volume,
-#             remove=False,
-#         )
-#
-#     def parse_nomer_response(self, response):
-#         """Transform nomer response into a pandas DataFrame.
-#
-#         Nomer response format is (normally) a valid TSV string.
-#         """
-#         try:
-#             res_df = pd.read_csv(
-#                 StringIO(response.decode("utf-8")), sep="\t", header=None
-#             )
-#             res_df.columns = self.columns
-#             # res_df.drop(columns=["alternativeNames", "lastCol"], inplace=True)
-#         except EmptyDataError as e:
-#             self.logger.error(e)
-#             return False, None
-#         else:
-#             return True, res_df
-#
-#     def df_to_query(self, df, id_column=None, name_column=None):
-#         """Convert a DataFrame into a valid nomer query.
-#
-#         Nomer can be asked about (a list of) names and/or taxids.
-#         """
-#         query_df = pd.DataFrame()
-#         query_df["id"] = df[id_column] if id_column is not None else np.nan
-#         query_df["name"] = df[name_column] if name_column is not None else np.nan
-#         query = query_df.to_csv(sep="\t", header=False, index=False)
-#         query = query.strip("\n")
-#         query = query.replace("\t", "\\t")
-#         query = query.replace("\n", "\\n")
-#         query = query.replace("'", " ")
-#         # print(query)
-#         return f'"{query}"'
-
-
 def create_mapping(df):
     """
     Return a dict that keeps track of duplicated items in a DataFrame
@@ -171,7 +49,12 @@ class TaxonomicEntityValidator:
     def __init__(self, config):
         self.logger = logging.getLogger(__name__)
         self.config = config
-        self.taxo_to_matcher = {"GBIF": "gbif", "NCBI": "ncbi", "IF": "indexfungorum"}
+        self.taxo_to_matcher = {
+            "GBIF": "gbif",
+            "NCBI": "ncbi",
+            "IF": "indexfungorum",
+            "SILVA": "ncbi",
+        }
         self.default_name_matcher = "globalnames"
         self.nomer = NomerHelper()
 
@@ -236,11 +119,26 @@ class TaxonomicEntityValidator:
             """
             Add the source taxonomy name as a prefix to all taxids in a column
             """
-            return col.map(
-                lambda id: f"{src_taxo}:{id}"
-                if (pd.notnull(id) and not str(id).startswith(src_taxo + ":"))
-                else id
-            )
+
+            def return_prefixed(id, src_taxo):
+                if (
+                    pd.notnull(id) and len(str(id).split(":")) == 2
+                ):  # .startswith(src_taxo + ":"):
+                    return (
+                        id
+                        if not pd.isna(
+                            pd.to_numeric(str(id).split(":")[-1], errors="coerce")
+                        )
+                        else np.nan
+                    )
+                elif pd.notnull(id) and pd.isna(pd.to_numeric(id, errors="coerce")):
+                    return np.nan
+                elif pd.notnull(id):
+                    return f"{src_taxo}:{id}"
+                else:
+                    return None
+
+            return col.map(lambda id: return_prefixed(id, src_taxo))
 
         assert id_column or name_column
 
@@ -256,7 +154,6 @@ class TaxonomicEntityValidator:
 
         if id_column:
             assert source_taxonomy
-            drop_df = drop_df[drop_df[id_column].str.isnumeric()]
             if source_taxonomy in self.taxo_to_matcher:
                 drop_df[id_column] = add_prefix(drop_df[id_column], source_taxonomy)
                 id_df = drop_df.dropna(subset=[id_column])
@@ -304,6 +201,29 @@ class TaxonomicEntityValidator:
                         sub_df.at[i, "valid_name"] = valid["matchName"]
                         sub_df.at[i, "iri"] = valid["iri"]
 
+        if source_taxonomy == "SILVA":
+            self.logger.debug("SILVA : all names and ids are valid by default")
+            for index, row in drop_df.iterrows():
+                for i in mapping[index]:
+                    if id_column:
+                        sub_df.at[i, "valid_id"] = (
+                            row[id_column]
+                            if row[id_column].startswith("SILVA:")
+                            else sub_df.at[i, "valid_id"]
+                        )
+                        taxid = row[id_column].split(":")[-1]
+                        sub_df.at[i, "iri"] = (
+                            f"https://www.arb-silva.de/{taxid}"
+                            if row[id_column].startswith("SILVA:")
+                            else sub_df.at[i, "iri"]
+                        )
+                    if name_column:
+                        sub_df.at[i, "valid_name"] = (
+                            row[name_column]
+                            if sub_df.at[i, "valid_id"].startswith("SILVA:")
+                            else sub_df.at[i, "valid_name"]
+                        )
+
         self.logger.debug(sub_df[["valid_id", "valid_name", "iri"]])
 
         # Get some statistics
@@ -339,10 +259,12 @@ class TaxonomicEntityValidator:
             name_column=name_column,
         )
         matching = self.nomer.ask_nomer(query, matcher=self.default_name_matcher)
-        mask = matching["matchType"].isin(
-            ["SAME_AS", "SYNONYM_OF", "HAS_ACCEPTED_NAME"]  # , "SIMILAR_TO"]
-        )
-        return matching[mask]
+        if not matching.empty:
+            mask = matching["matchType"].isin(
+                ["SAME_AS", "SYNONYM_OF", "HAS_ACCEPTED_NAME"]  # , "SIMILAR_TO"]
+            )
+            return matching[mask]
+        return matching
 
     def validate_taxids(self, df, id_column, name_column=None, source_taxonomy=None):
         """
@@ -357,10 +279,12 @@ class TaxonomicEntityValidator:
             name_column=name_column,
         )
         matching = self.nomer.ask_nomer(query, matcher=matcher)
-        mask = matching["matchType"].isin(
-            ["SAME_AS", "SYNONYM_OF", "HAS_ACCEPTED_NAME"]  # , "SIMILAR_TO"]
-        )
-        return matching[mask]
+        if not matching.empty:
+            mask = matching["matchType"].isin(
+                ["SAME_AS", "SYNONYM_OF", "HAS_ACCEPTED_NAME"]  # , "SIMILAR_TO"]
+            )
+            return matching[mask]
+        return matching
 
 
 def test_validator():
@@ -486,20 +410,36 @@ class TaxonomicEntityMapper:
                 drop_df, id_column, name_column, matcher=self.default_matcher
             )
             # Get all matches for each id
-            matches = matches[matches["matchId"].str.startswith(tuple(self.keep_taxo))]
-            # matches = matches[matches["matchId"] != matches["queryId"]]
+            if not matches.empty:
+                matches = matches[
+                    matches["matchId"].str.startswith(tuple(self.keep_taxo))
+                ]
 
-            not_found_in_target_taxo = []
-            for name, group in matches.groupby(["queryId", "queryName"], dropna=False):
-                if group[group["matchId"].str.startswith(self.target_taxonomy)].empty:
-                    self.logger.debug(
-                        f"Entity {name} not found in target taxonomy {self.target_taxonomy}"
-                    )
-                    not_found_in_target_taxo.append(name)
+            if matches.empty:
+                not_found_df = drop_df
+            else:
+                not_found_in_target_taxo = []
+                for name, group in matches.groupby(
+                    ["queryId", "queryName"], dropna=False
+                ):
+                    if group[
+                        group["matchId"].str.startswith(self.target_taxonomy)
+                    ].empty:
+                        self.logger.debug(
+                            f"Entity {name} not found in target taxonomy {self.target_taxonomy}"
+                        )
+                        not_found_in_target_taxo.append(name)
 
-            not_found_df = pd.DataFrame.from_records(
-                not_found_in_target_taxo, columns=[id_column, name_column]
-            )
+                not_found_df = pd.DataFrame.from_records(
+                    not_found_in_target_taxo, columns=[id_column, name_column]
+                )
+
+                not_found_df = pd.concat(  # Required if we want to use SILVA taxonomy
+                    [
+                        not_found_df,
+                        drop_df[~drop_df[id_column].isin(matches["queryId"])],
+                    ]
+                )
         else:
             not_found_df = drop_df
 
@@ -510,24 +450,61 @@ class TaxonomicEntityMapper:
             additional_matches = self.map_ids_and_names_to_target_taxo(
                 not_found_df, id_column, name_column, matcher=self.ncbi_matcher
             )
+
+            # Remove queries with multiple matching names in the same taxo
+            keep = []
+            for name, group in additional_matches.groupby(["queryId"], dropna=False):
+                matches_in_taxo = group["matchId"].unique()
+                taxos = [x.split(":")[0] for x in matches_in_taxo]
+                keep_match = True
+                for taxo in taxos:
+                    if taxos.count(taxo) > 1:
+                        self.logger.debug(
+                            f"Multiple matches for {name} in taxonomy {taxo} : {matches_in_taxo} -> discard !"
+                        )
+                        keep_match = False
+                        break
+                if keep_match:
+                    keep.append(name)
+            additional_matches = additional_matches[
+                additional_matches["queryId"].isin(keep)
+            ]
+
             if not matches.empty:
-                return pd.concat([matches, additional_matches], ignore_index=True)
+                matches = pd.concat([matches, additional_matches], ignore_index=True)
             else:
-                return additional_matches
+                matches = additional_matches
 
         return matches
 
     def map_ids_and_names_to_target_taxo(self, df, id_column, name_column, matcher):
+        temp_df = df.copy()
+        temp_df[id_column] = temp_df[id_column].fillna("")
+        mask = temp_df[id_column].str.startswith("SILVA:")
+        print(mask.unique())
+        print(temp_df[id_column].fillna("").astype(str))
+        temp_df[id_column] = temp_df[id_column].astype(str).mask(mask.astype("bool"))
         query = self.nomer.df_to_query(
-            df=df,
+            df=temp_df,
             id_column=id_column,
             name_column=name_column,
         )
         matching = self.nomer.ask_nomer(query, matcher=matcher)
-        mask = matching["matchType"].isin(
-            ["SAME_AS", "SYNONYM_OF", "HAS_ACCEPTED_NAME"]
-        )
-        return matching[mask]
+        if not matching.empty:
+            mask = matching["matchType"].isin(
+                ["SAME_AS", "SYNONYM_OF", "HAS_ACCEPTED_NAME"]
+            )
+            matching = matching[mask]
+
+            # Required if we want to use SILVA taxonomy : if the queryId column is empty,
+            # use the valid_id in df instead
+            matching["queryId"] = matching.apply(
+                lambda x: df[df[name_column] == x["queryName"]][id_column].iloc[0]
+                if x["queryId"] == ""
+                else x["queryId"],
+                axis=1,
+            )
+        return matching  # [mask]
 
 
 def test_mapper():

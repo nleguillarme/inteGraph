@@ -50,7 +50,7 @@ class CSV2RDF(Transformer):
             self.cfg.run_on_localhost
         )
 
-        self.uri_colnames = []
+        self.cols_for_valid = []
 
         self.taxonomic_mapper = None
         if "taxonomic_mapper_conf" in self.properties:
@@ -74,7 +74,7 @@ class CSV2RDF(Transformer):
                 self.properties.taxonomic_validator_conf
             )
 
-            self.uri_colnames += [
+            self.cols_for_valid += [
                 column_cfg.uri_column
                 for column_cfg in self.properties.taxonomic_validator_conf.columns
                 if not ("required" in column_cfg and column_cfg.required == False)
@@ -90,7 +90,7 @@ class CSV2RDF(Transformer):
             self.entity_mapper = OntologyMapper(self.properties.entity_mapper_conf)
             self.entity_mapper.load_ontology()
 
-            self.uri_colnames += [
+            self.cols_for_valid += [
                 column_cfg.uri_column
                 for column_cfg in self.properties.entity_mapper_conf.columns
                 if not ("required" in column_cfg and column_cfg.required == False)
@@ -108,13 +108,13 @@ class CSV2RDF(Transformer):
             )
             self.manual_mapper = ManualMapper(self.properties.manual_mapper_conf)
 
-            self.uri_colnames += [
+            self.cols_for_valid += [
                 column_cfg.uri_column
                 for column_cfg in self.properties.manual_mapper_conf.columns
                 if not ("required" in column_cfg and column_cfg.required == False)
             ]
 
-        self.uri_colnames = set(self.uri_colnames)
+        self.cols_for_valid = set(self.cols_for_valid)
 
         # Create triplifier
         self.properties.triplifier_conf.mapping_file = os.path.join(
@@ -236,9 +236,10 @@ class CSV2RDF(Transformer):
 
     def drop_na(self, f_in, f_out, f_na, **kwargs):
         df = read(f_in, sep=self.delimiter)
-        df_mapped = df.dropna(subset=self.uri_colnames)
+        print(self.cols_for_valid)
+        df_mapped = df.dropna(subset=self.cols_for_valid)
         write(df_mapped, f_out, sep=self.delimiter)
-        df_na = df[df[self.uri_colnames].isnull().any(axis=1)]
+        df_na = df[df[self.cols_for_valid].isnull().any(axis=1)]
         write(
             df_na,
             f_na,
@@ -250,12 +251,12 @@ class CSV2RDF(Transformer):
         self, f_in, f_taxa, f_out, wdir, **kwargs
     ):  # f_taxon, wdir, **kwargs):
         df = read(f_in, sep=self.delimiter)
-        # df_taxon = read(f_taxon, sep=self.delimiter)
-        self.triplifier.map(df, wdir, f_out)  # ,df_taxon, wdir, f_out)
+        df_taxa = read(f_taxa, sep=self.delimiter)
+        self.triplifier.map(df, df_taxa, wdir, f_out)  # ,df_taxon, wdir, f_out)
         move_file_to_dir(
             os.path.join(wdir, os.path.basename(f_out)), self.cfg.triples_dir
         )
-        df_taxa = read(f_taxa, sep=self.delimiter)
+        # df_taxa = read(f_taxa, sep=self.delimiter)
         g = self.taxonomic_mapper.df_to_triples(df_taxa)
         filename = os.path.basename(f_taxa).split(".")[0] + f".{self.cfg.rdf_format}"
         g.serialize(

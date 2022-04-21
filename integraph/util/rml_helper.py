@@ -63,7 +63,7 @@ def run_mapeathor(spreadsheet_filepath, rml_filepath):
 
     return run_container(
         client,
-        "oegdataintegration/mapeathor:v1.5.3",
+        "oegdataintegration/mapeathor:latest",
         parser_command,
         volumes,
         entrypoint="./run.sh",

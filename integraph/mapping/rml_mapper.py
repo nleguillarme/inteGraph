@@ -33,10 +33,10 @@ class RMLMappingEngine:
         )
         self.path_to_rml_rules = None
 
-    def map(self, df, wdir, f_out):  # df_taxon, wdir, f_out):
+    def map(self, df, df_taxon, wdir, f_out):  # df_taxon, wdir, f_out):
 
         # Convert data frame to CSV files for mapping and save them in wdir
-        self.df_to_csv(df, wdir)  # df_taxon, wdir)
+        self.df_to_csv(df, df_taxon, wdir)  # df_taxon, wdir)
 
         # Generate RML rules
         self.path_to_rml_rules = os.path.join(wdir, "mapping")
@@ -82,10 +82,10 @@ class RMLMappingEngine:
             )
             self.logger.info("Mapping of data to {} successful".format(f_out))
 
-    def df_to_csv(self, df, dst):  # df_taxon, dst):
+    def df_to_csv(self, df, df_taxon, dst):  # df_taxon, dst):
         sep = "\t"
         os.makedirs(dst, exist_ok=True)
         df["integraph_internal_id"] = df.index
         df.to_csv(os.path.join(dst, "data.tsv"), index=False, sep=sep)
-        # df_taxon["integraph_internal_id"] = df_taxon.index
-        # df_taxon.to_csv(os.path.join(dst, "taxa.tsv"), index=False, sep=sep)
+        df_taxon["integraph_internal_id"] = df_taxon.index
+        df_taxon.to_csv(os.path.join(dst, "taxa.tsv"), index=False, sep=sep)

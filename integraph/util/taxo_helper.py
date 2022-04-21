@@ -65,13 +65,14 @@ class NomerHelper:
 
         Returns a DataFrame.
         """
-        while True:
-            response = self.run_nomer_container(query, matcher=matcher)
-            res_df = self.parse_nomer_response(response)
-            if res_df is not None:
-                return res_df
-            else:
-                self.logger.debug(f"Nomer raised EmptyDataError : try again.")
+        # while True:
+        response = self.run_nomer_container(query, matcher=matcher)
+        res_df = self.parse_nomer_response(response)
+        if res_df is not None:
+            return res_df
+        else:
+            return pd.DataFrame()
+            # self.logger.debug(f"Nomer raised EmptyDataError : try again.")
 
     def run_nomer_container(self, query, matcher):
         """Run pynomer append command in Docker container.
@@ -101,7 +102,7 @@ class NomerHelper:
                 keep_default_na=False,
             )
             res_df.columns = self.columns
-        except EmptyDataError as e:
+        except pd.errors.EmptyDataError as e:
             self.logger.error(e)
             return None  # False, None
         else:

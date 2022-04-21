@@ -1,5 +1,0 @@
-GRAPHDB_VERSION=9.8.0
-GRAPHDB_HEAP_SIZE=10g
-GRAPHDB_HOME=../../graphdb-data
-REPOSITORY_CONFIG_FILE=../../graphdb-repo-config.ttl
-IMPORT_FOLDER=../../preload-data
