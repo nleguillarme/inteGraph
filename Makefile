@@ -1,5 +1,5 @@
 #export INTEGRAPH__CONFIG__HOST_CONFIG_DIR=$(shell pwd)/test-config
-export INTEGRAPH__CONFIG__HOST_CONFIG_DIR=/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/integraph-config
+export INTEGRAPH__CONFIG__HOST_CONFIG_DIR=/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/gratin-config
 export INTEGRAPH__CONFIG__USER_ID=$(shell id -u)
 export INTEGRAPH__CONFIG__GROUP_ID=$(shell id -g)
 export INTEGRAPH__CONFIG__NOMER_CACHE_DIR=${HOME}/.integraph/.nomer
@@ -10,11 +10,18 @@ export INTEGRAPH__CONFIG__DOCKER_GROUP_ID=$(shell getent group docker | cut -d: 
 #$(shell awk -F\: '/docker/ {print $3}' /etc/group)
 
 ################
-# Development
+# Initialization
 ################
 
-clean:
-		rm -r "${INTEGRAPH__CONFIG__NOMER_CACHE_DIR}"
+nomer-cache:
+		mkdir -p "${INTEGRAPH__CONFIG__NOMER_CACHE_DIR}"
+
+clean-nomer-cache:
+		sudo rm -r "${INTEGRAPH__CONFIG__NOMER_CACHE_DIR}"
+
+################
+# Development
+################
 
 test_dags:
 		python -m pytest tests/test_dags.py
@@ -24,13 +31,22 @@ test:
 		export INTEGRAPH__EXEC__TEST_MODE="True" ;\
 		docker-compose -f docker-compose-LocalExecutor.yml up webserver
 
+demo-test: nomer-cache
+		export INTEGRAPH__EXEC__TEST_MODE="True" ;\
+		export INTEGRAPH__CONFIG__HOST_CONFIG_DIR="/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/gratin-demo" ;\
+		docker-compose -f docker-compose-LocalExecutor.yml up webserver
+
+demo: nomer-cache
+		export INTEGRAPH__CONFIG__HOST_CONFIG_DIR="/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/gratin-demo" ;\
+		docker-compose -f docker-compose-LocalExecutor.yml up webserver
+
 test_main:
 		export INTEGRAPH__EXEC__TEST_MODE="True" ;\
-	  export INTEGRAPH__CONFIG__ROOT_CONFIG_DIR="/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/integraph-config" ;\
+	  export INTEGRAPH__CONFIG__ROOT_CONFIG_DIR="/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/gratin-config" ;\
 		python main_airflow.py
 
 test_rml_mapper:
-	export INTEGRAPH__CONFIG__ROOT_CONFIG_DIR="/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/integraph-config" ;\
+	export INTEGRAPH__CONFIG__ROOT_CONFIG_DIR="/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/gratin-config" ;\
 	python test_rml_mapper.py
 
 ################
@@ -56,6 +72,9 @@ build_rmlmapper:
 
 build_nomer:
 		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache nomer
+
+build_mapeathor:
+		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache mapeathor
 
 build_webserver:
 		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache webserver

@@ -1,4 +1,6 @@
 from .file_extractor_dag import FileExtractorDAG
+from .web_api_extractor_dag import WebAPIExtractorDAG
+from .sparql_extractor_dag import SPARQLExtractorDAG
 from .csv2rdf_dag import CSV2RDFDAG
 from .virtuoso_bulk_loader_dag import VirtuosoBulkLoaderDAG
 from .rdfox_loader_dag import RDFoxLoaderDAG
@@ -25,6 +27,14 @@ class PipelineFactory:
         if "file_location" in config:
             return self.get_dag_instance(
                 FileExtractorDAG, config, default_args, parent_dag_name
+            )
+        elif "url" in config:
+            return self.get_dag_instance(
+                WebAPIExtractorDAG, config, default_args, parent_dag_name
+            )
+        elif "endpoint" in config:
+            return self.get_dag_instance(
+                SPARQLExtractorDAG, config, default_args, parent_dag_name
             )
         else:
             raise UnsupportedSourceException()

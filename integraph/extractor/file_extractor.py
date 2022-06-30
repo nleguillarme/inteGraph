@@ -22,7 +22,6 @@ class FileExtractor(Extractor):
         self.cfg.ready_to_process_data_dir = os.path.join(
             self.cfg.output_dir, "ready_to_process"
         )
-
         parsed = urlparse(self.cfg.file_location)
         if parsed.scheme not in ("http", "https"):
             filepath = os.path.join(self.cfg.source_root_dir, self.cfg.file_location)
@@ -30,7 +29,6 @@ class FileExtractor(Extractor):
                 self.cfg.file_location = "file://" + filepath
             else:
                 raise FileNotFoundError("file {} not found".format(filepath))
-        # self.cfg.file_location = os.path.expandvars(self.cfg.file_location)
         self.logger.info("New File Extractor with id {}".format(self.get_id()))
 
     def run(self):
@@ -40,6 +38,7 @@ class FileExtractor(Extractor):
             self.unpack_archive()
 
     def clean_data_dir(self, **kwargs):
+        clean_dir(self.cfg.output_dir)
         clean_dir(self.get_fetched_data_dir())
         clean_dir(self.get_ready_to_process_data_dir())
 
@@ -78,9 +77,6 @@ class FileExtractor(Extractor):
             self.get_fetched_data_dir(),
             self.cfg.internal_id + "." + self.cfg.data_format,
         )
-        # return os.path.join(
-        #     self.get_fetched_data_dir(), self.cfg.file_location.rsplit("/", 1)[1]
-        # )
 
     def get_fetched_data_dir(self):
         return self.cfg.fetched_data_dir
@@ -93,21 +89,3 @@ class FileExtractor(Extractor):
         self.session.mount("file://", FileAdapter())
         self.session.mount("http://", HTTPAdapter())
         self.session.mount("https://", HTTPAdapter())
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="FileExtractor pipeline command line interface."
-    )
-
-    parser.add_argument("cfg_file", help="YAML configuration file.")
-    args = parser.parse_args()
-
-    config = read_config(args.cfg_file)
-    process = FileExtractor(config)
-
-    process.run()
-
-
-if __name__ == "__main__":
-    main()

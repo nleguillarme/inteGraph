@@ -12,7 +12,6 @@ from ..mapping import *
 from ..util.csv_helper import *
 from ..util.config_helper import read_config
 from ..util.file_helper import move_file_to_dir, clean_dir, get_basename_and_extension
-from ..util.robot_helper import RobotHelper
 
 
 class CSV2RDF(Transformer):

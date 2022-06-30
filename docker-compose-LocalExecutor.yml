@@ -9,7 +9,7 @@ services:
       image: nomer:latest
 
     gnparser:
-      #build: https://github.com/gnames/gnparser.git
+      build: https://github.com/gnames/gnparser.git
       image: gnames/gognparser:latest
 
     yarrrml-parser:
@@ -21,7 +21,7 @@ services:
       image: rmlmapper:latest
 
     mapeathor:
-      image: oegdataintegration/mapeathor:latest
+      image: oegdataintegration/mapeathor:v1.5.4
 
     sdm-rdfizer:
       build: https://github.com/SDM-TIB/SDM-RDFizer.git
@@ -147,6 +147,7 @@ services:
         #     - graphdbnet
         ports:
             - "8080:8080"
+            - "5432:5432"
         command: webserver
         healthcheck:
             test: ["CMD-SHELL", "[ -f /usr/local/airflow/airflow-webserver.pid ]"]

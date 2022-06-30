@@ -54,6 +54,7 @@ class TaxonomicEntityValidator:
             "NCBI": "ncbi",
             "IF": "indexfungorum",
             "SILVA": "ncbi",
+            "EOL": "eol",
         }
         self.default_name_matcher = "globalnames"
         self.nomer = NomerHelper()
