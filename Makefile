@@ -1,13 +1,10 @@
-#export INTEGRAPH__CONFIG__HOST_CONFIG_DIR=$(shell pwd)/test-config
-export INTEGRAPH__CONFIG__HOST_CONFIG_DIR=/home/leguilln/workspace/KNOWLEDGE_INTEGRATION/gratin/gratin-config
+export INTEGRAPH__CONFIG__HOST_CONFIG_DIR=$(shell pwd)/test-config
 export INTEGRAPH__CONFIG__USER_ID=$(shell id -u)
 export INTEGRAPH__CONFIG__GROUP_ID=$(shell id -g)
 export INTEGRAPH__CONFIG__NOMER_CACHE_DIR=${HOME}/.integraph/.nomer
 export INTEGRAPH__CONFIG__AIRFLOW_LOGS_DIR=${HOME}/.integraph/logs
 export INTEGRAPH__INSTALL__INSTALL_DIR=${PWD}/install_files
 export INTEGRAPH__CONFIG__DOCKER_GROUP_ID=$(shell getent group docker | cut -d: -f3)
-#export INTEGRAPH__CONFIG__DOCKER_GROUP_ID=999
-#$(shell awk -F\: '/docker/ {print $3}' /etc/group)
 
 ################
 # Initialization

@@ -400,7 +400,9 @@ class TaxonomicEntityMapper:
         mapping = create_mapping(
             sub_df
         )  # Mapping from items in drop_df to all duplicates in sub_df
-        drop_df = sub_df.drop_duplicates(subset=subset).replace("", np.nan)
+        drop_df = sub_df.drop_duplicates(  # .dropna(how="all", subset=subset)
+            subset=subset
+        ).replace("", np.nan)
 
         matches = pd.DataFrame()
         if id_column:
@@ -482,8 +484,8 @@ class TaxonomicEntityMapper:
         temp_df = df.copy()
         temp_df[id_column] = temp_df[id_column].fillna("")
         mask = temp_df[id_column].str.startswith("SILVA:")
-        print(mask.unique())
-        print(temp_df[id_column].fillna("").astype(str))
+        # print(mask.unique())
+        # print(temp_df[id_column].fillna("").astype(str))
         temp_df[id_column] = temp_df[id_column].astype(str).mask(mask.astype("bool"))
         query = self.nomer.df_to_query(
             df=temp_df,
@@ -491,20 +493,22 @@ class TaxonomicEntityMapper:
             name_column=name_column,
         )
         matching = self.nomer.ask_nomer(query, matcher=matcher)
+        # print(matching[["queryId", "matchType"]])
         if not matching.empty:
             mask = matching["matchType"].isin(
                 ["SAME_AS", "SYNONYM_OF", "HAS_ACCEPTED_NAME"]
             )
             matching = matching[mask]
 
-            # Required if we want to use SILVA taxonomy : if the queryId column is empty,
-            # use the valid_id in df instead
-            matching["queryId"] = matching.apply(
-                lambda x: df[df[name_column] == x["queryName"]][id_column].iloc[0]
-                if x["queryId"] == ""
-                else x["queryId"],
-                axis=1,
-            )
+            if not matching.empty:
+                # Required if we want to use SILVA taxonomy : if the queryId column is empty,
+                # use the valid_id in df instead
+                matching["queryId"] = matching.apply(
+                    lambda x: df[df[name_column] == x["queryName"]][id_column].iloc[0]
+                    if x["queryId"] == ""
+                    else x["queryId"],
+                    axis=1,
+                )
         return matching  # [mask]
 
 
