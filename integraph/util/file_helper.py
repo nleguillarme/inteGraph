@@ -162,7 +162,6 @@ def move_file_to_dir(file, dir):
 
 def copy_file_to_dir(file, dir):
     os.makedirs(dir, exist_ok=True)
-    print("Copy", file, dir)
     shutil.copy(file, dir)
 
 

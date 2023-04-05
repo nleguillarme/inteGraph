@@ -1,14 +1,9 @@
 # nomer (https://github.com/globalbioticinteractions/nomer)
 
-FROM openjdk:8
+FROM ibmjava:sdk-alpine
 
-#RUN apk --no-cache add sudo curl bash parallel
-RUN apt-get update && apt-get -y install sudo curl bash parallel
-
-RUN sudo sh -c '(echo "#!/usr/bin/env sh" && curl -L https://github.com/globalbioticinteractions/nomer/releases/download/0.2.10/nomer.jar) > /usr/local/bin/nomer && chmod +x /usr/local/bin/nomer' && nomer clean
-
+RUN apk add curl sudo
+RUN sudo sh -c '(curl -L https://github.com/globalbioticinteractions/nomer/releases/download/0.4.9/nomer.jar) > /usr/local/bin/nomer && chmod +x /usr/local/bin/nomer && nomer install-manpage' && nomer clean
 WORKDIR /
-
-CMD [ "nomer", "version" ]
 
 ENTRYPOINT ["sh", "-c"]

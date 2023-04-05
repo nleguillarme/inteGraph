@@ -321,14 +321,14 @@ class TaxonomicEntityMapper:
         g = Graph()
         for index, row in df.iterrows():
             if row["queryIRI"] != row["iri"]:
-                g.add((URIRef(row["queryIRI"]), OWL.sameAs, URIRef(row["iri"])))
+                g.add((URIRef(row["queryIRI"]), OWL.equivalentClass, URIRef(row["iri"])))
                 g.add((URIRef(row["queryIRI"]), RDFS.label, Literal(row["queryName"])))
             if row["matchId"].split(":")[0].startswith("NCBI"):
                 taxid = row["matchId"].split(":")[-1]
                 g.add(
                     (
                         URIRef(row["queryIRI"]),
-                        OWL.sameAs,
+                        OWL.equivalentClass,
                         URIRef(f"http://purl.obolibrary.org/obo/NCBITaxon_{taxid}"),
                     )
                 )

@@ -1,4 +1,6 @@
-export INTEGRAPH__CONFIG__HOST_CONFIG_DIR=$(shell pwd)/test-config
+#export INTEGRAPH__CONFIG__HOST_CONFIG_DIR=$(shell pwd)/test-config
+export INTEGRAPH__CONFIG__HOST_CONFIG_DIR=/home/leguilln/workspace/data_integration/gratin-2
+#export INTEGRAPH__CONFIG__HOST_CONFIG_DIR=/home/leguilln/workspace/data_integration/gratin/gratin-config
 export INTEGRAPH__CONFIG__USER_ID=$(shell id -u)
 export INTEGRAPH__CONFIG__GROUP_ID=$(shell id -g)
 export INTEGRAPH__CONFIG__NOMER_CACHE_DIR=${HOME}/.integraph/.nomer
@@ -50,10 +52,10 @@ test_rml_mapper:
 # Production
 ################
 
-build: build_yarrrml_parser build_rmlmapper build_nomer build_webserver
+build: build_mapeathor build_morph_kgc build_nomer build_webserver
 
-build_rdfizer:
-		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache sdm-rdfizer
+# build_rdfizer:
+# 		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache sdm-rdfizer
 
 build_morph_kgc:
 		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache morph-kgc
@@ -61,11 +63,11 @@ build_morph_kgc:
 build_gnparser:
 		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache gnparser
 
-build_yarrrml_parser:
-		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache yarrrml-parser
+# build_yarrrml_parser:
+# 		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache yarrrml-parser
 
-build_rmlmapper:
-		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache rmlmapper
+# build_rmlmapper:
+# 		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache rmlmapper
 
 build_nomer:
 		docker-compose -f docker-compose-LocalExecutor.yml build --no-cache nomer

@@ -58,16 +58,16 @@ def run_mapeathor(spreadsheet_filepath, rml_filepath):
     ]
     logger.debug(f"run_mapeathor : mount volume {volumes}")
 
-    parser_command = f"{remote_spreadsheet} RML {remote_rml}"
+    parser_command = f"-i {remote_spreadsheet} -l RML -o {remote_rml}"
     logger.debug(f"run_mapeathor : command ./run.sh {parser_command}")
 
     return run_container(
         client,
-        # "mapeathor:latest",
-        "oegdataintegration/mapeathor:v1.5.4",
+        "mapeathor:latest",
+        # "oegdataintegration/mapeathor:latest",
         parser_command,
         volumes,
-        entrypoint="./run.sh",
+        # entrypoint="./run.sh",
     )
 
 
@@ -86,6 +86,8 @@ def run_morph_kgc(config_filepath):
 
     mapper_command = f"{remote_config}"
     logger.debug(f"run_morph_kgc : command ./run.sh {mapper_command}")
+
+    print(mapper_command, volume)
 
     return run_container(client, "morph-kgc:latest", mapper_command, volume)
 

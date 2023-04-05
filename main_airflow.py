@@ -37,7 +37,7 @@ def create_ETL_dag(
 ):
 
     today = date.today()
-    dag_name = cfg.internal_id + "_" + today.strftime("%d%m%Y")
+    dag_name = cfg.internal_id# + "_" + today.strftime("%d%m%Y")
 
     ext_id, ext_dag = factory.get_extractor_dag(cfg, default_args, dag_name)
     tra_id, tra_dag = factory.get_transformer_dag(cfg, default_args, dag_name)

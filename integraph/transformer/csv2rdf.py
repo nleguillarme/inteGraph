@@ -255,7 +255,7 @@ class CSV2RDF(Transformer):
         move_file_to_dir(
             os.path.join(wdir, os.path.basename(f_out)), self.cfg.triples_dir
         )
-        # df_taxa = read(f_taxa, sep=self.delimiter)
+        df_taxa = read(f_taxa, sep=self.delimiter)
         g = self.taxonomic_mapper.df_to_triples(df_taxa)
         filename = os.path.basename(f_taxa).split(".")[0] + f".{self.cfg.rdf_format}"
         g.serialize(

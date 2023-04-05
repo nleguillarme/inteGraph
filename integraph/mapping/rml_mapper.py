@@ -87,5 +87,5 @@ class RMLMappingEngine:
         os.makedirs(dst, exist_ok=True)
         df["integraph_internal_id"] = df.index
         df.to_csv(os.path.join(dst, "data.tsv"), index=False, sep=sep)
-        df_taxon["integraph_internal_id"] = df_taxon.index
+        # df_taxon["integraph_internal_id"] = df_taxon.index
         df_taxon.to_csv(os.path.join(dst, "taxa.tsv"), index=False, sep=sep)
