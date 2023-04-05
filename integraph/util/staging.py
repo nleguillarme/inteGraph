@@ -1,18 +1,11 @@
-from pathlib import Path
+from .path import ensure_path
 import os
 import shutil
 
 
-def ensure_path(path):
-    if isinstance(path, str):
-        return Path(path)
-    else:
-        return path
-
-
 class StagingHelper:
     def __init__(self, root_dir):
-        self.root_dir = Path(root_dir)
+        self.root_dir = ensure_path(root_dir)
         self.registry = {"root": self.root_dir}
 
     def __getitem__(self, dir_name):

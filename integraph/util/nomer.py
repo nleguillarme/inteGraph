@@ -80,7 +80,6 @@ class NomerHelper:
 
         Returns a DataFrame.
         """
-        print(query)
         response = self.run_nomer_container(query, matcher=matcher)
         res_df = self.parse_nomer_response(response)
         if res_df is not None:

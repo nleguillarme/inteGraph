@@ -1,5 +1,9 @@
 import inspect
-from pathlib import Path
+from confection import Config
+
+
+def read_config(filepath):
+    return Config().from_disk(filepath)
 
 
 class registry:

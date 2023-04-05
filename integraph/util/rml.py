@@ -64,20 +64,16 @@ def run_mapeathor(spreadsheet_filepath, rml_filepath):
     return run_container(
         client,
         "mapeathor:latest",
-        # "oegdataintegration/mapeathor:latest",
         parser_command,
         volumes,
-        # entrypoint="./run.sh",
     )
 
 
 def run_morph_kgc(config_filepath):
-    # docker run -v $(pwd):/data --rm morph-kgc:latest /data/config-morph.ini
     logger = logging.getLogger("run_morph_kgc")
     client = docker.from_env()
 
     remote_config = os.path.join("/data", os.path.basename(config_filepath))
-    # remote_rml = os.path.join("/mapeathor/data", os.path.basename(rml_filepath))
 
     local_dir = os.path.dirname(config_filepath)
 
@@ -93,12 +89,10 @@ def run_morph_kgc(config_filepath):
 
 
 def run_sdm_rdfizer(config_filepath):
-    # docker run -it --rm -v $(pwd)/example:/data rdfizer:latest -c config.ini
     logger = logging.getLogger("run_sdm_rdfizer")
     client = docker.from_env()
 
     remote_config = os.path.join("/data", os.path.basename(config_filepath))
-    # remote_rml = os.path.join("/mapeathor/data", os.path.basename(rml_filepath))
 
     local_dir = os.path.dirname(config_filepath)
 
