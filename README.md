@@ -2,12 +2,23 @@
 
 inteGraph is a library of ETL (Extract-Transform-Load) components for ontology-based biodiversity data integration, powered by Apache Airflow.
 
-## Project status
+## Installation
 
-- [x] Operational data integration workflow
-- [ ] Data loading to SPARQL endpoint, Virtuoso, GraphDB :heavy_check_mark:, RDFox
-- [ ] Extensive documentation
-- [ ] **First release**
+1. Clone the project repository
+``` console
+git clone https://github.com/nleguillarme/inteGraph.git
+```
+2. Run install.sh
+``` console
+cd inteGraph ; sh install.sh
+```
+
+## Running inteGraph
+
+To run inteGraph in Docker you just need to execute the following:
+``` console
+make up
+```
 
 ## License
 
