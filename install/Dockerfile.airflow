@@ -1,0 +1,37 @@
+FROM apache/airflow:2.5.3-python3.10
+
+USER root
+
+# This fixes permission issues on linux.
+# The airflow user should have the same UID as the user running docker on the host system.
+ARG DOCKER_UID
+ARG DOCKER_GID
+RUN \
+    : "${DOCKER_UID:?Build argument DOCKER_UID needs to be set and non-empty. Use 'make build' to set it automatically.}" \
+    && usermod -u ${DOCKER_UID} airflow \
+    && groupadd -g ${DOCKER_GID} docker \
+    && usermod -aG docker airflow
+
+RUN usermod -aG root airflow
+
+# Give the airflow user sudo privileges in order to be able to run Docker commands inside the container
+RUN echo "airflow ALL=NOPASSWD: ALL" >> /etc/sudoers
+
+RUN chgrp -R 0 /opt/airflow/ && chmod -R g+rwX /opt/airflow/
+RUN chown -R airflow: /opt/airflow/
+# RUN touch /var/run/docker.sock
+# RUN chown -R airflow:docker /var/run/docker.sock
+
+# Copy entripoint.sh
+# COPY scripts/entrypoint.sh /opt/airflow/entrypoint.sh
+# RUN chmod a+x /opt/airflow/entrypoint.sh
+
+USER airflow
+
+# Install inteGraph requirements
+COPY requirements.txt /requirements.txt
+RUN pip install --upgrade pip
+RUN pip install --user -r /requirements.txt
+
+# See https://stackoverflow.com/questions/71499627/airflow-on-docker-start-get-errortypeerror-init-got-an-unexpected-keywor
+RUN pip uninstall -y argparse
