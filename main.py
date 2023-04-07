@@ -2,7 +2,7 @@ from integraph.etl.factory import create_etl_dag
 from integraph.util.config import registry, read_config
 from integraph.util.path import ensure_path
 from integraph.util.connections import register_connections
-
+from distutils.util import strtobool
 import pendulum
 import logging
 import os
@@ -10,9 +10,16 @@ import json
 
 logger = logging.getLogger(__name__)
 
-run_in_test_mode = os.getenv("INTEGRAPH__EXEC__TEST_MODE", default="False") == "True"
+
+run_in_test_mode = strtobool(os.getenv("INTEGRAPH__EXEC__TEST_MODE", default="false"))
+print(
+    "run_in_test_mode",
+    run_in_test_mode,
+    os.getenv("INTEGRAPH__EXEC__TEST_MODE", default="False").lower(),
+)
 if run_in_test_mode == True:
     logger.info("Run in test mode")
+
 
 ### Read graph config
 root_dir = ensure_path(
@@ -46,10 +53,8 @@ if connections.exists():
     config = json.load(connections.open())
     register_connections(config)
 
-
 ### Register ontologies
 registry.ontologies.update(graph_cfg["ontologies"])
-
 
 default_args = {
     "depends_on_past": False,
@@ -59,7 +64,7 @@ default_args = {
 
 dag_args = {
     "start_date": pendulum.today(),
-    "schedule": "@once",
+    "schedule ": "@once",
     "catchup": False,
 }
 

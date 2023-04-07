@@ -1,9 +1,0 @@
-# nomer (https://github.com/globalbioticinteractions/nomer)
-
-FROM ibmjava:sdk-alpine
-
-RUN apk add curl sudo
-RUN sudo sh -c '(curl -L https://github.com/globalbioticinteractions/nomer/releases/download/0.4.9/nomer.jar) > /usr/local/bin/nomer && chmod +x /usr/local/bin/nomer && nomer install-manpage' && nomer clean
-WORKDIR /
-
-ENTRYPOINT ["sh", "-c"]
