@@ -30,6 +30,14 @@ ab066b04f9b8   integraph-airflow-scheduler   "/usr/bin/dumb-init …"   4 minute
 ```
 In particular, this starts an instance of the Airflow scheduler and webserver. The webserver is available at http://localhost:8080.
 
+## Building a biodiversity knowledge graph with inteGraph
+
+*Coming soon...*
+
+## Cite inteGraph
+
+Le Guillarme, N., & Thuiller, W. (2023). A Practical Approach to Constructing a Knowledge Graph for Soil Ecological Research. bioRxiv, 2023-03. https://doi.org/10.1101/2023.03.02.530763 
+
 ## License
 
 License: Apache License 2.0
