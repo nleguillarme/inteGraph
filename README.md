@@ -30,6 +30,11 @@ ab066b04f9b8   integraph-airflow-scheduler   "/usr/bin/dumb-init …"   4 minute
 ```
 In particular, this starts an instance of the Airflow scheduler and webserver. The webserver is available at http://localhost:8080.
 
+To exit inteGraph and properly close all containers, run the following command:
+``` console
+make down
+```
+
 ## Building a biodiversity knowledge graph with inteGraph
 
 *Coming soon...*
