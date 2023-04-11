@@ -1,9 +1,9 @@
 from airflow import DAG
 from urllib.parse import urljoin
-from .extract_api import ExtractAPI
-from .extract_file import ExtractFile
-from .transform_csv import TransformCSV
-from .load_db import LoadDB
+from integraph.etl.extract_api import ExtractAPI
+from integraph.etl.extract_file import ExtractFile
+from integraph.etl.transform_csv import TransformCSV
+from integraph.etl.load_db import LoadDB
 
 
 class UnsupportedSourceException(Exception):
