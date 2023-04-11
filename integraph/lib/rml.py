@@ -31,18 +31,25 @@ def check_graph_exists(graph_filepath):
 
 
 @task(task_id="prepare")
-def prepare_for_rml_execution(filepaths, config_filepath, rml_filepath, output_dir):
+def prepare_for_rml_execution(filepaths, rml_filepath, output_dir):
     from ..util.csv import write, read
-    import configparser
 
+    def create_morph_kgc_config(rml_filepath, output_filepath):
+        import configparser
+
+        config = configparser.ConfigParser()
+        config.add_section("CONFIGURATION")
+        config.set("CONFIGURATION", "output_file", "result.nq")
+        config.set("CONFIGURATION", "output_format", "N-QUADS")
+        config.add_section("DataSource1")
+        config.set("DataSource1", "mappings", ensure_path(rml_filepath).name)
+        with open(output_filepath, "w") as f:
+            config.write(f)
+
+    output_dir = ensure_path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    config = configparser.ConfigParser()
-    config.read(config_filepath)
-    config.add_section("DataSource1")
-    config.set("DataSource1", "mappings", ensure_path(rml_filepath).name)
-    fill_config_filepath = output_dir / ensure_path(config_filepath).name
-    with open(fill_config_filepath, "w") as f:
-        config.write(f)
+    morph_config_filepath = output_dir / "config.ini"
+    create_morph_kgc_config(rml_filepath, morph_config_filepath)
 
     for filepath in filepaths:
         copy_filepath = output_dir / ensure_path(filepath).name
@@ -50,7 +57,7 @@ def prepare_for_rml_execution(filepaths, config_filepath, rml_filepath, output_d
         df["integraph_internal_id"] = df.index
         write(df, copy_filepath)
 
-    return str(fill_config_filepath)
+    return str(morph_config_filepath)
 
 
 @task_group(group_id="generate_rml")
@@ -65,12 +72,11 @@ def generate_rml(mapping_filepath, rml_filepath):
 
 
 @task_group(group_id="execute_rml")
-def execute_rml(filepaths, morph_config_filepath, rml_filepath, output_dir):
+def execute_rml(filepaths, rml_filepath, output_dir):
     from airflow.operators.bash import BashOperator
 
     prepare = prepare_for_rml_execution(
         filepaths=filepaths,
-        config_filepath=morph_config_filepath,
         rml_filepath=rml_filepath,
         output_dir=output_dir,
     )

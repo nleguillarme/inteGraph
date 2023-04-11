@@ -8,12 +8,11 @@ from ..util.path import ensure_path
 
 
 class TransformCSV:
-    def __init__(self, root_dir, config, graph_id, morph_config_filepath):
+    def __init__(self, root_dir, config, graph_id):
         self.tg_id = "transform"
         self.root_dir = ensure_path(root_dir)
         self.staging = StagingHelper(root_dir / "staging")
         self.graph_id = graph_id
-        self.morph_config_filepath = morph_config_filepath
         self.cfg = config
 
     def transform(self, filepath):
@@ -115,7 +114,6 @@ class TransformCSV:
 
                 data_graph_filepath = execute_rml(
                     filepaths=[data_ann, taxo_ann],
-                    morph_config_filepath=self.morph_config_filepath,
                     rml_filepath=rml_filepath,
                     output_dir=self.staging["triplified"],
                 )

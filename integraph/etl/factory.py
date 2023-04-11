@@ -32,11 +32,9 @@ class ETLFactory:
             raise UnsupportedSourceException()
 
     @classmethod
-    def get_transform(self, root_dir, config, graph_id, morph_config_filepath):
+    def get_transform(self, root_dir, config, graph_id):
         if config["format"] == "csv":
-            return TransformCSV(
-                root_dir, config, graph_id, morph_config_filepath
-            ).transform
+            return TransformCSV(root_dir, config, graph_id).transform
         else:
             raise UnsupportedFormatException(config["format"])
 
@@ -50,7 +48,6 @@ class ETLFactory:
 
 def create_etl_dag(
     graph_base_iri,
-    morph_config_filepath,
     src_id,
     src_dir,
     extract_cfg,
@@ -74,7 +71,6 @@ def create_etl_dag(
             src_dir,
             transform_cfg,
             graph_id=graph_id,
-            morph_config_filepath=morph_config_filepath,
         )
         load = ETLFactory.get_load(src_dir, load_cfg)
 

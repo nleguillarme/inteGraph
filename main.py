@@ -77,13 +77,11 @@ dag_args = {
 
 for src in sources:
     src_dir = sources_dir / src
-    morph_config_filepath = root_dir / graph_cfg["morph"]["config"]
     src_cfg = read_config(list(src_dir.glob("*.cfg"))[-1])
     src_id = src_cfg["core"]["source_id"]
     logger.info(f"Create DAG for source: {src_id}")
     create_etl_dag(
         graph_base_iri=graph_cfg["core"]["base_iri"],
-        morph_config_filepath=morph_config_filepath,
         src_id=src_id,
         src_dir=src_dir,
         extract_cfg=src_cfg["extract"],
