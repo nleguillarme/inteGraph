@@ -1,6 +1,8 @@
 ![](https://i.ibb.co/C0jzrCk/integraph-logo.png)
 
-inteGraph is a library of ETL (Extract-Transform-Load) components for ontology-based biodiversity data integration, powered by Apache Airflow.
+`inteGraph` is a toolkit for ontology-based data integration in the biodiversity domain that allows generating data integration pipelines dynamically from configuration files, and scheduling and monitoring the execution of these pipelines.
+
+`inteGraph` is powered by [Apache Airflow](https://airflow.apache.org/).
 
 ## Installation
 
@@ -29,6 +31,11 @@ ab066b04f9b8   integraph-airflow-scheduler   "/usr/bin/dumb-init …"   4 minute
 70b2ec620cda   postgres:13                   "docker-entrypoint.s…"   8 minutes ago   Up 8 minutes (healthy)   5432/tcp                                    integraph-postgres-1
 ```
 In particular, this starts an instance of the Airflow scheduler and webserver. The webserver is available at http://localhost:8080.
+
+To exit inteGraph and properly close all containers, run the following command:
+``` console
+make down
+```
 
 ## Building a biodiversity knowledge graph with inteGraph
 
