@@ -1,8 +1,8 @@
 ![](https://i.ibb.co/C0jzrCk/integraph-logo.png)
 
-`inteGraph` implements a declarative approach to building ETL pipelines that transform your biodiversity datasets into interoperable RDF graphs, minimising the amount of manual effort and Semantic Web expertise required to integrate distributed (semi-)structured data sources into a biodiversity knowledge graph.
+`inteGraph` is a toolkit for ontology-based data integration in the biodiversity domain that allows generating data integration pipelines dynamically from configuration files, and scheduling and monitoring the execution of these pipelines.
 
-`inteGraph` is powered by Apache Airflow.
+`inteGraph` is powered by [Apache Airflow](https://airflow.apache.org/).
 
 ## Installation
 
