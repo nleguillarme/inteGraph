@@ -39,7 +39,7 @@ make down
 
 ## Building a biodiversity knowledge graph with inteGraph
 
-*Coming soon...*
+Check **[the wiki](https://github.com/nleguillarme/inteGraph/wiki)** to learn how to use `inteGraph` to integrate multiple heterogenenous data sources into a unified knowledge graph.
 
 ## Cite inteGraph
 
