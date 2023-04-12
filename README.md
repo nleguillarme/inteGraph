@@ -45,6 +45,10 @@ make down
 
 Le Guillarme, N., & Thuiller, W. (2023). A Practical Approach to Constructing a Knowledge Graph for Soil Ecological Research. bioRxiv, 2023-03. https://doi.org/10.1101/2023.03.02.530763 
 
+## Acknowledgments
+
+`inteGraph` is running thanks to the following open-source softwares: [Mapeathor](https://github.com/oeg-upm/mapeathor), [Morph-KGC](https://morph-kgc.readthedocs.io/en/latest/), [nomer](https://github.com/globalbioticinteractions/nomer), [GNparser](https://github.com/gnames/gnparser), [confection](https://github.com/explosion/confection).
+
 ## License
 
 License: Apache License 2.0
