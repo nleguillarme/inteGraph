@@ -1,6 +1,7 @@
 import logging
 from airflow.decorators import task
 from airflow.utils.task_group import TaskGroup
+from airflow.operators.bash import BashOperator
 from ..lib.file import *
 from ..util.staging import StagingHelper
 from ..util.path import ensure_path
@@ -20,14 +21,24 @@ class ExtractFile:
         with TaskGroup(group_id=self.tg_id):
             # Fetch data
             self.staging.register("fetched")
-            url_task = task(get_url)(self.cfg["url"], self.root_dir)
+            url_task = task(get_url)(self.cfg["file_path"], self.root_dir)
 
             fetch_task = task(fetch)(url_task, self.staging["fetched"])
 
+            cmd = f"patool test {fetch_task} ; echo $?"
+            is_archive = BashOperator(task_id="is_archive", bash_command=cmd)
+            fetch_task >> is_archive
+
             # Unpack if archive, else move to "extracted"
-            @task.branch(task_id="is_archive")
-            def branch(filepath):
-                if is_archive(filepath):
+            # @task.branch(task_id="is_archive")
+            # def branch(filepath):
+            #     if is_archive(filepath):
+            #         return self.tg_id + ".unpack"
+            #     else:
+            #         return self.tg_id + ".copy"
+            @task.branch(task_id="branch")
+            def branch(return_code):
+                if return_code == 0:
                     return self.tg_id + ".unpack"
                 else:
                     return self.tg_id + ".copy"
@@ -49,7 +60,7 @@ class ExtractFile:
             )
 
             (
-                branch(fetch_task)
+                branch(is_archive.output)#fetch_task)
                 >> [Label("yes") >> unpack_task, Label("no") >> copy_task]
                 >> serve_task
             )

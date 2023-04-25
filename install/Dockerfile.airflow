@@ -19,6 +19,9 @@ RUN echo "airflow ALL=NOPASSWD: ALL" >> /etc/sudoers
 
 RUN chgrp -R 0 /opt/airflow/ && chmod -R g+rwX /opt/airflow/
 RUN chown -R airflow: /opt/airflow/
+
+RUN ln -fs /usr/local/bin/python /usr/bin/python
+
 # RUN touch /var/run/docker.sock
 # RUN chown -R airflow:docker /var/run/docker.sock
 

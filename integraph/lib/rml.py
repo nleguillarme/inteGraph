@@ -39,8 +39,8 @@ def prepare_for_rml_execution(filepaths, rml_filepath, output_dir):
 
         config = configparser.ConfigParser()
         config.add_section("CONFIGURATION")
-        config.set("CONFIGURATION", "output_file", "result.nq")
-        config.set("CONFIGURATION", "output_format", "N-QUADS")
+        config.set("CONFIGURATION", "output_file", "result.nt")
+        config.set("CONFIGURATION", "output_format", "N-TRIPLES")
         config.add_section("DataSource1")
         config.set("DataSource1", "mappings", ensure_path(rml_filepath).name)
         with open(output_filepath, "w") as f:
@@ -66,6 +66,7 @@ def generate_rml(mapping_filepath, rml_filepath):
 
     mapping_filepath = ensure_path(mapping_filepath)
     rml_filepath = ensure_path(rml_filepath)
+    rml_filepath.mkdir(parents=True, exist_ok=True)
     cmd = f"python3 -m mapeathor -i {mapping_filepath.absolute()} -l RML -o {rml_filepath}"
     run_mapeathor = BashOperator(task_id="run_mapeathor", bash_command=cmd)
     return run_mapeathor >> check_rml_exists(rml_filepath)
@@ -82,7 +83,7 @@ def execute_rml(filepaths, rml_filepath, output_dir):
     )
     cmd = f"cd {output_dir} ; python3  -m morph_kgc {prepare}"
     run_morpk_kgc = BashOperator(task_id="run_morpk_kgc", bash_command=cmd)
-    graph_filepath = output_dir / "result.nq"
+    graph_filepath = output_dir / "result.nt"
     graph_task = check_graph_exists(graph_filepath=graph_filepath)
     return prepare >> run_morpk_kgc >> graph_task
 

@@ -22,7 +22,6 @@ def fetch(
         offset = 0
         while True:
             paginated_query = query + f"&offset={offset}&limit={limit}"
-            print(paginated_query)
             response = get_response(http, endpoint, paginated_query, headers)
             response.raise_for_status()
             nb_results = get_nb_results(response, format)

@@ -3,6 +3,7 @@ from airflow.utils.task_group import TaskGroup
 from airflow.operators.bash import BashOperator
 from ..lib.csv import *
 from ..lib.rml import *
+from ..lib.annotator import *
 from ..util.staging import StagingHelper
 from ..util.path import ensure_path
 
@@ -25,7 +26,7 @@ class TransformCSV:
                 output_dir = self.staging["cleansed"]
                 user_script = self.root_dir / self.cfg["cleanse"]["script"]
                 cmd = f"python {user_script} --integraph_filepath={filepath} --integraph_outputdir={output_dir}"
-                cleanse_task = BashOperator(task_id="run_user_script", bash_command=cmd)
+                cleanse_task = BashOperator(task_id="cleanse", bash_command=cmd)
                 filepath >> cleanse_task
                 cleansed = cleanse_task.output
 
@@ -77,7 +78,8 @@ class TransformCSV:
                     mapping_filepaths = []
 
                     for entity in self.cfg["annotate"]:
-                        if self.cfg["annotate"][entity].get("with_mapping"):
+                        if needs_mapping(self.cfg["annotate"][entity]):
+                        # if self.cfg["annotate"][entity].get("with_mapping"):
                             entity_mapping = task_group(group_id=f"map_{entity}")(
                                 map_taxo_entity
                             )(
@@ -120,13 +122,37 @@ class TransformCSV:
 
                 taxa_graph_filepath = task(task_id="generate_taxa_graph")(triplify)(
                     filepath=taxo_ann,
-                    output_filepath=self.staging["triplified"] / "taxa.nq",
+                    output_filepath=self.staging["triplified"] / "taxa.nt",
                 )
 
-                graph_filepath = task(task_id="merge_graphs")(merge)(
-                    filepaths=[data_graph_filepath, taxa_graph_filepath],
-                    graph_id=self.graph_id,
-                    output_filepath=self.staging["triplified"] / "graph.nq",
+                graph_id = "<" + self.graph_id.replace("/", "\/") + ">"
+
+                taxa_nq = self.staging["triplified"] / "taxa.nq"
+                cmd = f"sed 's/.$/{graph_id} &/' {taxa_graph_filepath} > {taxa_nq}"
+                taxa_to_nquads = BashOperator(
+                    task_id="taxa_to_nquads", bash_command=cmd
                 )
 
-            return graph_filepath
+                taxa_graph_filepath >> taxa_to_nquads
+
+                data_nq = self.staging["triplified"] / "result.nq"
+                cmd = f"sed 's/.$/{graph_id} &/' {data_graph_filepath} > {data_nq}"
+                data_to_nquads = BashOperator(
+                    task_id="data_to_nquads", bash_command=cmd
+                )
+
+                data_graph_filepath >> data_to_nquads
+
+                graph_nq = self.staging["triplified"] / "graph.nq"
+                cmd = f"cat {data_nq} {taxa_nq} > {graph_nq} ; echo {graph_nq}"
+                graph_filepath = BashOperator(task_id="merge_graphs", bash_command=cmd)
+
+                [data_to_nquads, taxa_to_nquads] >> graph_filepath
+
+                # graph_filepath = task(task_id="merge_graphs")(merge)(
+                #     filepaths=[data_graph_filepath, taxa_graph_filepath],
+                #     graph_id=self.graph_id,
+                #     output_filepath=self.staging["triplified"] / "graph.nq",
+                # )
+            return graph_filepath.output
+            # return graph_filepath

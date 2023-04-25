@@ -51,6 +51,8 @@ def fetch(url, output_dir):
             filename = ensure_path(url.split("file://")[-1]).name
         else:
             filename = _get_filename_from_cd(resp.headers.get("content-disposition"))
+        if not filename:
+            filename = ensure_path(url).name
         output_dir.mkdir(parents=True, exist_ok=True)
         filepath = output_dir / filename
         with open(filepath, "wb") as f:

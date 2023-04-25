@@ -16,3 +16,6 @@ psycopg2-binary==2.9.6
 sqlalchemy==1.4.46
 mapeathor==1.6.1
 morph-kgc==2.4.0
+patool
+xlrd
+beautifulsoup4

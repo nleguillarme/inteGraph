@@ -50,7 +50,7 @@ class OntologyAnnotator(Annotator):
         sub_df["integraph.label"] = np.nan if replace else df["integraph.label"]
 
         drop_df = sub_df[sub_df[iri_col].isna()]
-        drop_df = sub_df.drop_duplicates(subset=subset).replace("", np.nan)
+        drop_df = drop_df.drop_duplicates(subset=subset).replace("", np.nan).dropna(subset=subset)
 
         if id_col:
             pass  # TODO : use hasDbXref annotations
@@ -58,6 +58,7 @@ class OntologyAnnotator(Annotator):
             iri_map = {}
             for index, row in drop_df.iterrows():
                 label = row[label_col]
+                print(label_col, label)
                 matches = self.get_iri(label)
                 iri_map[label] = matches
 
