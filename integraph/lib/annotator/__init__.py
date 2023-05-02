@@ -1,5 +1,5 @@
 from pathlib import Path
-from ...util.config import registry
+import text2term
 from .taxonomy import TaxonomyAnnotator
 from .ontology import OntologyAnnotator
 from .dictionary import DictionaryAnnotator
@@ -18,8 +18,8 @@ class AnnotatorFactory:
     def get_annotator(self, label):
         if label in TAXONOMIES:
             return TaxonomyAnnotator()
-        if label in registry.ontologies:
-            return OntologyAnnotator(registry.ontologies[label])
+        if text2term.cache_exists(str(label)):
+            return OntologyAnnotator(label)
         if Path(label).suffix == ".yml":
             return DictionaryAnnotator(label)
         raise Exception

@@ -1,5 +1,5 @@
 from integraph.etl.factory import create_etl_dag
-from integraph.util.config import registry, read_config
+from integraph.util.config import read_config
 from integraph.util.path import ensure_path
 from integraph.util.connections import register_connections
 from distutils.util import strtobool
@@ -7,6 +7,7 @@ import pendulum
 import logging
 import os
 import json
+import text2term
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,9 @@ if connections.exists():
 ontologies = graph_cfg.get("ontologies")
 if ontologies:
     logger.info(f"Register ontologies: {list(ontologies.keys())}")
-    registry.ontologies.update(graph_cfg["ontologies"])
+    for onto in ontologies:
+        if not text2term.cache_exists(onto):
+            text2term.cache_ontology(ontologies[onto], onto)
 
 default_args = {
     "depends_on_past": False,

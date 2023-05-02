@@ -2,6 +2,13 @@ FROM apache/airflow:2.5.3-python3.10
 
 USER root
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    git \
+    && apt-get autoremove -yqq --purge \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 # This fixes permission issues on linux.
 # The airflow user should have the same UID as the user running docker on the host system.
 ARG DOCKER_UID

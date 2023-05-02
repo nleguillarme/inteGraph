@@ -7,6 +7,7 @@ from requests_file import FileAdapter
 from pyunpack import Archive
 from ..util.path import ensure_path
 import re
+import mimetypes
 
 
 def _get_session():
@@ -17,17 +18,36 @@ def _get_session():
     return session
 
 
-def _get_filename_from_cd(cd):
-    """
-    Get filename from content-disposition
-    """
-    if not cd:
-        return None
-    fname = re.findall("filename=(.+)", cd)
-    if len(fname) == 0:
-        return None
-    return fname[0].strip('"')
+# def _get_filename_from_cd(cd):
+#     """
+#     Get filename from content-disposition
+#     """
+#     if not cd:
+#         return None
+#     fname = re.findall("filename=(.+)", cd)
+#     if len(fname) == 0:
+#         return None
+#     return fname[0].strip('"')
 
+def _get_filename_from_resp(url, resp):
+    cd = resp.headers.get("content-disposition")
+    if cd:
+        fname = re.findall("filename=(.+)", cd)
+        if len(fname) != 0:
+            return fname[0].strip('"')
+    else:
+        path = ensure_path(url)
+        extension = ''.join(path.suffixes)
+        if extension:
+            return path.name
+        else:
+            content_type = resp.headers.get("Content-Type")
+            if content_type:
+                extension = mimetypes.guess_extension(content_type)
+                if extension:
+                    return path.name + extension
+    raise ValueError(f"Cannot determine filename for url {url} : {resp}")
+        
 
 def get_url(url, root_dir):
     if validators.url(url):
@@ -50,9 +70,11 @@ def fetch(url, output_dir):
         if url.startswith("file://"):
             filename = ensure_path(url.split("file://")[-1]).name
         else:
-            filename = _get_filename_from_cd(resp.headers.get("content-disposition"))
-        if not filename:
-            filename = ensure_path(url).name
+            filename = _get_filename_from_resp(url, resp)
+        #     print(resp.headers)
+        #     filename = _get_filename_from_cd(resp.headers.get("content-disposition"))
+        # if not filename:
+        #     filename = ensure_path(url).name
         output_dir.mkdir(parents=True, exist_ok=True)
         filepath = output_dir / filename
         with open(filepath, "wb") as f:
@@ -64,7 +86,15 @@ def fetch(url, output_dir):
 def unpack(filepath, output_dir):
     output_dir.mkdir(parents=True, exist_ok=True)
     Archive(filepath).extractall(output_dir)
-    return list(output_dir.iterdir())
+    # unpacked_files = []
+    # if files:
+    #     for file in files:
+    #         path = output_dir / file
+    #         if path.exists():
+    #             unpacked_files.append(path)
+    #         else:
+    #             raise FileExistsError(path)
+    return [str(path) for path in output_dir.iterdir()]
 
 
 def copy(filepath, output_dir):

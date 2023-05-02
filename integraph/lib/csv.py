@@ -4,18 +4,32 @@ from .annotator import TaxonomyAnnotator
 import logging
 import os
 import pandas as pd
+import numpy as np
 from pathlib import Path
 from airflow.decorators import task
 from ..util.path import ensure_path
 
-
-# def to_tsv(filepath, sep, output_dir):
-#     df = read(filepath, sep=sep)
-#     output_filepath = output_dir / (str(Path(filepath).stem) + ".tsv")
-#     output_filepath.parent.mkdir(parents=True, exist_ok=True)
-#     write(df, output_filepath, sep="\t")
-#     return str(output_filepath)
-
+@task
+def to_ets(filepath, ets_config, delimiter, output_dir):
+    id_vars = ets_config["id_vars"]
+    value_vars = ets_config["value_vars"]
+    vars_to_units = ets_config["units"]
+    for var in value_vars:
+        vars_to_units[var] = vars_to_units.get(var)
+    output_dir = ensure_path(output_dir)
+    df = read(filepath, sep=delimiter)
+    df = pd.melt(df, id_vars=id_vars, value_vars=value_vars,var_name='traitName', value_name='traitValue', ignore_index=False)
+    if "na" in ets_config:
+        df["traitValue"] = df["traitValue"].replace(ets_config.get("na"), np.nan)
+    df["traitUnit"] = df["traitName"].replace(vars_to_units)
+    df = df.dropna(subset='traitValue')
+    df = df[~((df["traitUnit"] == "binary") & (df["traitValue"].astype(str).isin(["0", "0.0"])))]
+    df = df.reset_index().rename(columns = {'index':'occurrenceID'})
+    df = df.reset_index().rename(columns = {'index':'dataID'})
+    output_dir.mkdir(parents=True, exist_ok=True)
+    ets_filepath = output_dir / Path(filepath).name
+    write(df, ets_filepath, sep=delimiter, index=True)
+    return str(ets_filepath)
 
 def annotate_entity(filepath, root_dir, entity, entity_cfg, output_dir):
     root_dir = ensure_path(root_dir)

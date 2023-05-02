@@ -1,5 +1,5 @@
 from .base import Annotator
-from ...util.nomer import NomerHelper
+from ...util.nomer import NomerHelper, TAXONOMIES
 from ...util.gnparser import normalize_names
 import pandas as pd
 import numpy as np
@@ -118,6 +118,7 @@ class TaxonomyAnnotator(Annotator):
 
         matcher = self.matchers[source] if (id_col and source) else self.name_matcher
         valid_ents = self.map_taxonomic_entities(drop_df, matcher)
+        valid_ents = valid_ents[valid_ents["matchId"].str.startswith(tuple(TAXONOMIES.keys()))]
 
         by = ["queryId"] if id_col else [] + ["queryName"] if label_col else []
         by = (

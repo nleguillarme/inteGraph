@@ -183,10 +183,10 @@ TAXONOMIES = {
         "url_prefix": "https://cmecscatalog.org/cmecs/classification/aquaticSetting/",
         "url_suffix": "",
     },
-    "FBC:SLB:SpecCode:": {
-        "url_prefix": "http://sealifebase.org/Summary/SpeciesSummary.php?id=",
-        "url_suffix": "",
-    },
+    # "FBC:SLB:SpecCode:": {
+    #     "url_prefix": "http://sealifebase.org/Summary/SpeciesSummary.php?id=",
+    #     "url_suffix": "",
+    # },
     "INAT_TAXON:": {"url_prefix": "https://inaturalist.org/taxa/", "url_suffix": ""},
     "GEONAMES:": {"url_prefix": "http://www.geonames.org/", "url_suffix": ""},
     "INAT:": {
@@ -194,10 +194,10 @@ TAXONOMIES = {
         "url_suffix": "",
     },
     "WD:": {"url_prefix": "https://www.wikidata.org/wiki/", "url_suffix": ""},
-    "bioinfo:ref:": {
-        "url_prefix": "http://bioinfo.org.uk/html/b",
-        "url_suffix": ".htm",
-    },
+    # "bioinfo:ref:": {
+    #     "url_prefix": "http://bioinfo.org.uk/html/b",
+    #     "url_suffix": ".htm",
+    # },
     "GAME:": {
         "url_prefix": "https://public.myfwc.com/FWRI/GAME/Survey.aspx?id=",
         "url_suffix": "",
@@ -212,10 +212,10 @@ TAXONOMIES = {
         "url_prefix": "http://gulfbase.org/biogomx/biospecies.php?species=",
         "url_suffix": "",
     },
-    "FBC:FB:SpecCode:": {
-        "url_prefix": "http://fishbase.org/summary/",
-        "url_suffix": "",
-    },
+    # "FBC:FB:SpecCode:": {
+    #     "url_prefix": "http://fishbase.org/summary/",
+    #     "url_suffix": "",
+    # },
     "IRMNG:": {
         "url_prefix": "http://www.marine.csiro.au/mirrorsearch/ir_search.list_species?sp_id=",
         "url_suffix": "",
@@ -237,10 +237,10 @@ TAXONOMIES = {
         "url_prefix": "http://www.marinespecies.org/aphia.php?p=taxdetails&id=",
         "url_suffix": "",
     },
-    "urn:lsid:biodiversity.org.au:apni.taxon:": {
-        "url_prefix": "http://id.biodiversity.org.au/apni.taxon/",
-        "url_suffix": "",
-    },
+    # "urn:lsid:biodiversity.org.au:apni.taxon:": {
+    #     "url_prefix": "http://id.biodiversity.org.au/apni.taxon/",
+    #     "url_suffix": "",
+    # },
     "EOL:": {"url_prefix": "http://eol.org/pages/", "url_suffix": ""},
     "EOL_V2:": {
         "url_prefix": "https://doi.org/10.5281/zenodo.1495266#",

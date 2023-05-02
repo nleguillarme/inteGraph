@@ -2,11 +2,11 @@ import logging
 from airflow.decorators import task
 from airflow.utils.task_group import TaskGroup
 from airflow.operators.bash import BashOperator
+# from airflow.operators.python import ShortCircuitOperator
 from ..lib.file import *
 from ..util.staging import StagingHelper
 from ..util.path import ensure_path
 from airflow.utils.edgemodifier import Label
-
 
 class ExtractFile:
     def __init__(self, root_dir, config):
@@ -29,16 +29,17 @@ class ExtractFile:
             is_archive = BashOperator(task_id="is_archive", bash_command=cmd)
             fetch_task >> is_archive
 
-            # Unpack if archive, else move to "extracted"
-            # @task.branch(task_id="is_archive")
-            # def branch(filepath):
-            #     if is_archive(filepath):
-            #         return self.tg_id + ".unpack"
-            #     else:
-            #         return self.tg_id + ".copy"
+            # @task.short_circuit()
+            # def is_archive(return_code):
+            #     return int(return_code) == 0
+            
+            # @task.short_circuit()
+            # def is_not_archive(return_code):
+            #     return int(return_code) == 1
+
             @task.branch(task_id="branch")
             def branch(return_code):
-                if return_code == 0:
+                if int(return_code) == 0:
                     return self.tg_id + ".unpack"
                 else:
                     return self.tg_id + ".copy"
@@ -51,16 +52,33 @@ class ExtractFile:
                 filepath=fetch_task, output_dir=self.staging["extracted"]
             )
 
+            file = self.cfg.get("file")
+            if file:
+                file = self.staging["extracted"] / file
+
             # Serve file to next task (transform)
-            def serve(filepaths):
-                return [f for f in filepaths if f][0]
+            def serve(filepaths, file=None):
+                if file and file.exists():
+                    return str(file)
+                elif len(filepaths) == 1:
+                    if type(filepaths[0]) is not list:
+                        return str(filepaths[0])
+                else:
+                    return [str(f) for f in filepaths if f][0]
+                raise ValueError(filepaths)
 
             serve_task = task(trigger_rule="none_failed_min_one_success")(serve)(
-                filepaths=[unpack_task, copy_task]
+                filepaths=[unpack_task, copy_task], file=file
             )
 
+            # is_archive_task = is_archive.override(ignore_downstream_trigger_rules=False)(test_archive.output)
+            # is_not_archive_task = is_not_archive.override(ignore_downstream_trigger_rules=False)(test_archive.output)
+
+            # is_archive_task >> unpack_task >> serve_task
+            # is_not_archive_task >> copy_task >> serve_task
+
             (
-                branch(is_archive.output)#fetch_task)
+                branch(is_archive.output)
                 >> [Label("yes") >> unpack_task, Label("no") >> copy_task]
                 >> serve_task
             )

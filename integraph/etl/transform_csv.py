@@ -30,6 +30,11 @@ class TransformCSV:
                 filepath >> cleanse_task
                 cleansed = cleanse_task.output
 
+            if "ets" in self.cfg:
+                self.staging.register("ets")
+                cleansed = to_ets(filepath=cleansed, ets_config=self.cfg["ets"], delimiter=self.cfg["delimiter"], output_dir=self.staging["ets"])
+                
+
             with TaskGroup(group_id="annotate"):  # Semantic annotation
                 self.staging.register("chunked")
 
