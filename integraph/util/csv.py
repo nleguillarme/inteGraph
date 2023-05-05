@@ -9,6 +9,7 @@ class ColumnNotFoundException(Exception):
 
 def read(file_path, sep="\t", index_col=None):
     df = pd.read_csv(file_path, sep=sep, dtype=str, encoding_errors="ignore", index_col=index_col)
+    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
     return df
 
 

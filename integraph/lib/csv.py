@@ -11,20 +11,27 @@ from ..util.path import ensure_path
 
 @task
 def to_ets(filepath, ets_config, delimiter, output_dir):
-    id_vars = ets_config["id_vars"]
-    value_vars = ets_config["value_vars"]
-    vars_to_units = ets_config["units"]
-    for var in value_vars:
-        vars_to_units[var] = vars_to_units.get(var)
+    id_vars = ets_config.get("id_vars")
+    value_vars = ets_config.get("value_vars")
     output_dir = ensure_path(output_dir)
-    df = read(filepath, sep=delimiter)
-    df = pd.melt(df, id_vars=id_vars, value_vars=value_vars,var_name='traitName', value_name='traitValue', ignore_index=False)
-    if "na" in ets_config:
-        df["traitValue"] = df["traitValue"].replace(ets_config.get("na"), np.nan)
-    df["traitUnit"] = df["traitName"].replace(vars_to_units)
-    df = df.dropna(subset='traitValue')
-    df = df[~((df["traitUnit"] == "binary") & (df["traitValue"].astype(str).isin(["0", "0.0"])))]
-    df = df.reset_index().rename(columns = {'index':'occurrenceID'})
+    index_col = ets_config.get("index_col")
+    df = read(filepath, sep=delimiter, index_col=index_col)
+
+    if id_vars and value_vars:
+        df = pd.melt(df, id_vars=id_vars, value_vars=value_vars,var_name='traitName', value_name='traitValue', ignore_index=False)
+        if ets_config.get("na"):
+            df["traitValue"] = df["traitValue"].replace(ets_config.get("na"), np.nan)
+        df = df.dropna(subset='traitValue')
+    
+    vars_to_units = ets_config.get("units")
+    if vars_to_units:
+        for var in value_vars:
+            vars_to_units[var] = vars_to_units.get(var)
+        df["traitUnit"] = df["traitName"].replace(vars_to_units)
+        df = df[~((df["traitUnit"] == "binary") & (df["traitValue"].astype(str).isin(["0", "0.0"])))]
+
+    index_col = index_col if index_col else 'index'
+    df = df.reset_index().rename(columns = {index_col:'occurrenceID'})
     df = df.reset_index().rename(columns = {'index':'dataID'})
     output_dir.mkdir(parents=True, exist_ok=True)
     ets_filepath = output_dir / Path(filepath).name

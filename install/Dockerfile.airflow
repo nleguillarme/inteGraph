@@ -43,5 +43,10 @@ COPY requirements.txt /requirements.txt
 RUN pip install --upgrade pip
 RUN pip install --user -r /requirements.txt
 
+RUN git clone https://github.com/ccb-hms/ontology-mapper.git \
+    && cd ontology-mapper \
+    && pip install --user -r requirements.txt \
+    && pip install .
+
 # See https://stackoverflow.com/questions/71499627/airflow-on-docker-start-get-errortypeerror-init-got-an-unexpected-keywor
 RUN pip uninstall -y argparse
