@@ -43,7 +43,7 @@ Check **[the wiki](https://github.com/nleguillarme/inteGraph/wiki)** to learn ho
 
 ## Cite inteGraph
 
-Le Guillarme, N., & Thuiller, W. (2023). A Practical Approach to Constructing a Knowledge Graph for Soil Ecological Research. bioRxiv, 2023-03. https://doi.org/10.1101/2023.03.02.530763 
+Le Guillarme, N., & Thuiller, W. (2023). [A practical approach to constructing a knowledge graph for soil ecological research](https://www.sciencedirect.com/science/article/pii/S116455632300033X). European Journal of Soil Biology, 117, 103497.
 
 ## Acknowledgments
 
