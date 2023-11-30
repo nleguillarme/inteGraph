@@ -29,6 +29,7 @@ def _get_session():
 #         return None
 #     return fname[0].strip('"')
 
+
 def _get_filename_from_resp(url, resp):
     cd = resp.headers.get("content-disposition")
     if cd:
@@ -37,7 +38,7 @@ def _get_filename_from_resp(url, resp):
             return fname[0].strip('"')
     else:
         path = ensure_path(url)
-        extension = ''.join(path.suffixes)
+        extension = "".join(path.suffixes)
         if extension:
             return path.name
         else:
@@ -47,7 +48,7 @@ def _get_filename_from_resp(url, resp):
                 if extension:
                     return path.name + extension
     raise ValueError(f"Cannot determine filename for url {url} : {resp}")
-        
+
 
 def get_url(url, root_dir):
     if validators.url(url):
@@ -62,19 +63,16 @@ def get_url(url, root_dir):
             raise FileNotFoundError(str(path))
 
 
-def fetch(url, output_dir):
+def fetch(url, output_dir, filename=None):
     session = _get_session()
     with session.get(url, allow_redirects=True, stream=True) as resp:
         resp.raw.decode_content = True
         resp.raise_for_status()
-        if url.startswith("file://"):
-            filename = ensure_path(url.split("file://")[-1]).name
-        else:
-            filename = _get_filename_from_resp(url, resp)
-        #     print(resp.headers)
-        #     filename = _get_filename_from_cd(resp.headers.get("content-disposition"))
-        # if not filename:
-        #     filename = ensure_path(url).name
+        if not filename:
+            if url.startswith("file://"):
+                filename = ensure_path(url.split("file://")[-1]).name
+            else:
+                filename = _get_filename_from_resp(url, resp)
         output_dir.mkdir(parents=True, exist_ok=True)
         filepath = output_dir / filename
         with open(filepath, "wb") as f:

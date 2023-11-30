@@ -25,11 +25,11 @@ class TaxonomyAnnotator(Annotator):
             "gbif": "gbif",
             "ncbi": "ncbi",
             "ifungorum": "indexfungorum",
-            "silva": "ncbi",
+            "silva": "globalnames",  # ncbi",
             "eol": "eol",
         }
-        self.name_matcher = "globalnames"
-        self.keep_only = ["NCBI", "GBIF", "IF"]
+        self.name_matcher = "ncbi"  # "globalnames"
+        self.keep_only = ["NCBI", "GBIF", "IF", "EOL"]
 
     def annotate(
         self, df, id_col, label_col, iri_col, source=None, target="ncbi", replace=False
@@ -61,12 +61,23 @@ class TaxonomyAnnotator(Annotator):
                         else new_matches
                     )
                     mapped_ents = matches.groupby("queryId", dropna=False)
-                    not_found_in_target = []
+                    # not_found_in_target = []
+                    # for name, group in mapped_ents:
+                    #     if group[group["matchId"].str.startswith(target.upper())].empty:
+                    #         not_found_in_target.append(name)
+                    # not_found_df = not_found_df[
+                    #     not_found_df[id_col].isin(not_found_in_target)
+                    # ]
+
+                    found_in_target = []
                     for name, group in mapped_ents:
-                        if group[group["matchId"].str.startswith(target.upper())].empty:
-                            not_found_in_target.append(name)
+                        if not group[
+                            group["matchId"].str.startswith(target.upper())
+                        ].empty:
+                            found_in_target.append(name)
+
                     not_found_df = not_found_df[
-                        not_found_df[id_col].isin(not_found_in_target)
+                        ~not_found_df[id_col].isin(found_in_target)
                     ]
         return matches, not_found_df
 
@@ -118,7 +129,9 @@ class TaxonomyAnnotator(Annotator):
 
         matcher = self.matchers[source] if (id_col and source) else self.name_matcher
         valid_ents = self.map_taxonomic_entities(drop_df, matcher)
-        valid_ents = valid_ents[valid_ents["matchId"].str.startswith(tuple(TAXONOMIES.keys()))]
+        valid_ents = valid_ents[
+            valid_ents["matchId"].str.startswith(tuple(TAXONOMIES.keys()))
+        ]
 
         by = ["queryId"] if id_col else [] + ["queryName"] if label_col else []
         by = (

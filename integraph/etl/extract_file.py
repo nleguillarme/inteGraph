@@ -2,11 +2,13 @@ import logging
 from airflow.decorators import task
 from airflow.utils.task_group import TaskGroup
 from airflow.operators.bash import BashOperator
+
 # from airflow.operators.python import ShortCircuitOperator
 from ..lib.file import *
 from ..util.staging import StagingHelper
 from ..util.path import ensure_path
 from airflow.utils.edgemodifier import Label
+
 
 class ExtractFile:
     def __init__(self, root_dir, config):
@@ -22,24 +24,29 @@ class ExtractFile:
             # Fetch data
             self.staging.register("fetched")
             url_task = task(get_url)(self.cfg["file_path"], self.root_dir)
+            fetch_task = task(fetch)(
+                url_task, self.staging["fetched"], filename=self.cfg.get("file_name")
+            )
 
-            fetch_task = task(fetch)(url_task, self.staging["fetched"])
-
-            cmd = f"patool test {fetch_task} ; echo $?"
+            cmd = f"patool test {fetch_task} | tail -1"  # echo $?"
             is_archive = BashOperator(task_id="is_archive", bash_command=cmd)
             fetch_task >> is_archive
 
             # @task.short_circuit()
             # def is_archive(return_code):
             #     return int(return_code) == 0
-            
+
             # @task.short_circuit()
             # def is_not_archive(return_code):
             #     return int(return_code) == 1
 
             @task.branch(task_id="branch")
             def branch(return_code):
-                if int(return_code) == 0:
+                # if int(return_code) == 0:
+                #     return self.tg_id + ".unpack"
+                # else:
+                #     return self.tg_id + ".copy"
+                if return_code == "patool: ... tested ok.":
                     return self.tg_id + ".unpack"
                 else:
                     return self.tg_id + ".copy"

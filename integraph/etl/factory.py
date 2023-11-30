@@ -32,22 +32,23 @@ class ETLFactory:
             raise UnsupportedSourceException()
 
     @classmethod
-    def get_transform(self, root_dir, config, graph_id):
+    def get_transform(self, root_dir, config, graph_id, prov_metadata):
         if config["format"] == "csv":
-            return TransformCSV(root_dir, config, graph_id).transform
+            return TransformCSV(root_dir, config, graph_id, prov_metadata).transform
         else:
             raise UnsupportedFormatException(config["format"])
 
     @classmethod
     def get_load(self, root_dir, config):
-        if config["id"] == "graphdb":
+        if config.get("id") in ["graphdb", "rdfox"]:
             return LoadDB(root_dir, config).load
         else:
-            raise UnsupportedDatabaseException(config.db)
+            raise UnsupportedDatabaseException(config.get("id"))
 
 
 def create_etl_dag(
     graph_base_iri,
+    prov_metadata,
     src_id,
     src_dir,
     extract_cfg,
@@ -71,6 +72,7 @@ def create_etl_dag(
             src_dir,
             transform_cfg,
             graph_id=graph_id,
+            prov_metadata=prov_metadata,
         )
         load = ETLFactory.get_load(src_dir, load_cfg)
 

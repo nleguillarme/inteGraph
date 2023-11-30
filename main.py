@@ -85,6 +85,7 @@ for src in sources:
     logger.info(f"Create DAG for source: {src_id}")
     create_etl_dag(
         graph_base_iri=graph_cfg["core"]["base_iri"],
+        prov_metadata=src_cfg["core"].get("source_metadata"),
         src_id=src_id,
         src_dir=src_dir,
         extract_cfg=src_cfg["extract"],

@@ -4,17 +4,19 @@ from airflow.operators.bash import BashOperator
 from ..lib.csv import *
 from ..lib.rml import *
 from ..lib.annotator import *
+from ..lib.provenance import *
 from ..util.staging import StagingHelper
 from ..util.path import ensure_path
 
 
 class TransformCSV:
-    def __init__(self, root_dir, config, graph_id):
+    def __init__(self, root_dir, config, graph_id, prov_metadata=None):
         self.tg_id = "transform"
         self.root_dir = ensure_path(root_dir)
         self.staging = StagingHelper(root_dir / "staging")
         self.graph_id = graph_id
         self.cfg = config
+        self.prov_metadata = prov_metadata
 
     def transform(self, filepath):
         with TaskGroup(group_id=self.tg_id):
@@ -25,15 +27,19 @@ class TransformCSV:
                 self.staging.register("cleansed")
                 output_dir = self.staging["cleansed"]
                 user_script = self.root_dir / self.cfg["cleanse"]["script"]
-                cmd = f"python {user_script} --integraph_filepath={filepath} --integraph_outputdir={output_dir}"
+                cmd = f"python {user_script} --integraph_filepath='{filepath}' --integraph_outputdir='{output_dir}'"
                 cleanse_task = BashOperator(task_id="cleanse", bash_command=cmd)
                 filepath >> cleanse_task
                 cleansed = cleanse_task.output
 
             if "ets" in self.cfg:
                 self.staging.register("ets")
-                cleansed = to_ets(filepath=cleansed, ets_config=self.cfg["ets"], delimiter=self.cfg["delimiter"], output_dir=self.staging["ets"])
-                
+                cleansed = to_ets(
+                    filepath=cleansed,
+                    ets_config=self.cfg["ets"],
+                    delimiter=self.cfg["delimiter"],
+                    output_dir=self.staging["ets"],
+                )
 
             with TaskGroup(group_id="annotate"):  # Semantic annotation
                 self.staging.register("chunked")
@@ -84,7 +90,7 @@ class TransformCSV:
 
                     for entity in self.cfg["annotate"]:
                         if needs_mapping(self.cfg["annotate"][entity]):
-                        # if self.cfg["annotate"][entity].get("with_mapping"):
+                            # if self.cfg["annotate"][entity].get("with_mapping"):
                             entity_mapping = task_group(group_id=f"map_{entity}")(
                                 map_taxo_entity
                             )(
@@ -148,16 +154,25 @@ class TransformCSV:
 
                 data_graph_filepath >> data_to_nquads
 
+                tasks = [data_to_nquads, taxa_to_nquads]
                 graph_nq = self.staging["triplified"] / "graph.nq"
-                cmd = f"cat {data_nq} {taxa_nq} > {graph_nq} ; echo {graph_nq}"
+
+                if self.prov_metadata:
+                    self.staging.register("provenance")
+                    prov_graph = generate_prov_graph(
+                        self.graph_id,
+                        self.graph_id + "#provenance",
+                        self.prov_metadata,
+                        output_filepath=self.staging["provenance"] / "graph.nq",
+                    )
+                    prov_nq = self.staging["provenance"] / "graph.nq"
+                    cmd = f"cat {data_nq} {taxa_nq} {prov_nq} > {graph_nq} ; echo {graph_nq}"
+                    tasks.append(prov_graph)
+                else:
+                    cmd = f"cat {data_nq} {taxa_nq} > {graph_nq} ; echo {graph_nq}"
+
                 graph_filepath = BashOperator(task_id="merge_graphs", bash_command=cmd)
 
-                [data_to_nquads, taxa_to_nquads] >> graph_filepath
+                tasks >> graph_filepath
 
-                # graph_filepath = task(task_id="merge_graphs")(merge)(
-                #     filepaths=[data_graph_filepath, taxa_graph_filepath],
-                #     graph_id=self.graph_id,
-                #     output_filepath=self.staging["triplified"] / "graph.nq",
-                # )
             return graph_filepath.output
-            # return graph_filepath
