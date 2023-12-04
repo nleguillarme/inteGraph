@@ -10,13 +10,13 @@ from ..util.path import ensure_path
 
 
 class TransformCSV:
-    def __init__(self, root_dir, config, graph_id, prov_metadata=None):
+    def __init__(self, root_dir, config, graph_id, metadata=None):
         self.tg_id = "transform"
         self.root_dir = ensure_path(root_dir)
         self.staging = StagingHelper(root_dir / "staging")
         self.graph_id = graph_id
         self.cfg = config
-        self.prov_metadata = prov_metadata
+        self.prov_metadata = metadata
 
     def transform(self, filepath):
         with TaskGroup(group_id=self.tg_id):
@@ -61,7 +61,7 @@ class TransformCSV:
 
                 self.staging.register("annotated")
                 ann_filepaths = []
-                entity_ann_last_task = {}
+                map_filepaths = []
 
                 for entity in self.cfg[
                     "annotate"
@@ -77,40 +77,20 @@ class TransformCSV:
                     )
 
                     # Keep a pointer to the entity-aware concat task for concatenating all entity annotations
-                    ann_filepaths.append(entity_ann["filepath"])
+                    ann_filepaths.append(entity_ann["ann_filepath"])
+                    map_filepaths.append(entity_ann["map_filepath"])
 
-                    # Keep a pointer to the last task for each entity to chain with taxonomic mapping
-                    entity_ann_last_task[entity] = entity_ann["task"]
-
-                with TaskGroup(
-                    group_id="map_taxa"
-                ):  # Map taxonomic entities to other taxonomies
-                    self.staging.register("mapped")
-                    mapping_filepaths = []
-
-                    for entity in self.cfg["annotate"]:
-                        if needs_mapping(self.cfg["annotate"][entity]):
-                            # if self.cfg["annotate"][entity].get("with_mapping"):
-                            entity_mapping = task_group(group_id=f"map_{entity}")(
-                                map_taxo_entity
-                            )(
-                                filepath=entity_ann_last_task[entity],
-                                entity=entity,
-                                output_dir=self.staging["mapped"],
-                            )
-                            mapping_filepaths.append(entity_mapping)
-
-                    # Concat taxonomic mappings across entities
-                    taxo_ann = task(task_id="concat")(concat)(
-                        filepaths=mapping_filepaths,
-                        output_filepath=self.staging["mapped"] / "taxa.tsv",
-                        drop=True,
-                    )
+                # Concat taxonomic mappings across entities
+                taxo_ann = task(task_id="concat_taxa")(concat)(
+                    filepaths=map_filepaths,
+                    output_filepath=self.staging["annotated"] / "integraph_taxa.tsv",
+                    drop=True,
+                )
 
                 # Concat annotations across entities and original data
                 data_ann = task(task_id="add_annotations")(concat)(
                     filepaths=[concat_chunks] + ann_filepaths,
-                    output_filepath=self.staging["annotated"] / "data.tsv",
+                    output_filepath=self.staging["annotated"] / "integraph_data.tsv",
                     drop=False,
                     index_col=0,
                     axis=1,

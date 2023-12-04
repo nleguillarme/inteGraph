@@ -1,6 +1,5 @@
 from ..util.csv import get_csv_file_reader, write, read
-from .annotator import AnnotatorFactory
-from .annotator import TaxonomyAnnotator
+from .annotator import AnnotatorFactory, TaxonomyAnnotator, get_annotator_config
 import logging
 import os
 import pandas as pd
@@ -59,47 +58,60 @@ def to_ets(filepath, ets_config, delimiter, output_dir):
 def annotate_entity(filepath, root_dir, entity, entity_cfg, output_dir):
     root_dir = ensure_path(root_dir)
     output_dir = ensure_path(output_dir)
+
     prev_task = filepath
     first_annotator = True
-    for target in entity_cfg.get("target"):
-        task_id = target
-        if ensure_path(target).suffix == ".yml":
-            target = root_dir / target
-            task_id = target.name.replace(".", "_")
+    taxonomy_annotator = None
+    for annotator in entity_cfg.get("annotators"):
+        if get_annotator_config(annotator)["type"] == "taxonomy":
+            taxonomy_annotator = annotator
         prev_task = (
-            task(task_id=task_id)(annotate)
+            task(task_id=annotator)(annotate)
             .partial(
+                annotator=annotator,
                 id_col=entity_cfg.get("id"),
                 label_col=entity_cfg.get("label"),
-                iri_col=entity + "_iri",
-                source=entity_cfg.get("source"),
-                target=target,
-                output_dir=output_dir / entity / task_id,
+                iri_col=entity + "ID",
+                output_dir=output_dir / entity / annotator,
                 replace=first_annotator,
             )
             .expand(filepath=prev_task)
         )
         first_annotator = False
+
     # Concat chunks for the current entity
-    ann_filepath = task(task_id=f"concat")(concat)(
+    ann_filepath = task(task_id=f"concat_annotations")(concat)(
         filepaths=prev_task,
         output_filepath=output_dir / entity / "all.tsv",
         drop=False,
         index_col=0,
     )
-    return {"filepath": ann_filepath, "task": prev_task}
+
+    map_filepath = None
+    if taxonomy_annotator:
+        mapped_chunks = map.partial(
+            annotator=taxonomy_annotator, output_dir=output_dir / entity / annotator
+        ).expand(filepath=prev_task)
+        map_filepath = task(task_id="concat_mappings")(concat)(
+            filepaths=mapped_chunks,
+            output_filepath=output_dir / entity / "mapped_all.tsv",
+            drop=False,
+            index_col=0,
+        )
+
+    return {"ann_filepath": ann_filepath, "map_filepath": map_filepath}
 
 
-def map_taxo_entity(filepath, entity, output_dir):
-    mapped_chunks = map.partial(output_dir=output_dir / entity).expand(
-        filepath=filepath
-    )
-    return task(task_id="concat")(concat)(
-        filepaths=mapped_chunks,
-        output_filepath=output_dir / entity / "all.tsv",
-        drop=False,
-        index_col=0,
-    )
+# def map_taxo_entity(filepath, annotator, entity, output_dir):
+#     mapped_chunks = map.partial(
+#         annotator=annotator, output_dir=output_dir / entity
+#     ).expand(filepath=filepath)
+#     return task(task_id="concat")(concat)(
+#         filepaths=mapped_chunks,
+#         output_filepath=output_dir / entity / "all.tsv",
+#         drop=False,
+#         index_col=0,
+#     )
 
 
 @task
@@ -125,10 +137,14 @@ def split(filepath, chunksize, delimiter, output_dir):
         raise ValueError(filepath)
 
 
-def annotate(filepath, id_col, label_col, iri_col, source, target, replace, output_dir):
-    annotator = AnnotatorFactory.get_annotator(label=target)
+def annotate(
+    filepath, annotator, id_col, label_col, iri_col, replace, output_dir
+):  # source, target, replace, output_dir):
+    annotator = AnnotatorFactory.get_annotator(annotator)
     df = read(filepath, index_col=0)
-    ann_df = annotator.annotate(df, id_col, label_col, iri_col, source, target, replace)
+    ann_df = annotator.annotate(
+        df, id_col, label_col, iri_col, replace
+    )  # source, target, replace)
     output_dir.mkdir(parents=True, exist_ok=True)
     ann_filepath = output_dir / Path(filepath).name
     write(ann_df, ann_filepath, index=True)
@@ -136,10 +152,11 @@ def annotate(filepath, id_col, label_col, iri_col, source, target, replace, outp
 
 
 @task
-def map(filepath, output_dir):
+def map(filepath, annotator, output_dir):
     from ..util.nomer import TAXONOMIES
 
-    annotator = TaxonomyAnnotator()
+    # annotator = TaxonomyAnnotator()
+    annotator = AnnotatorFactory.get_annotator(annotator)
     df = read(filepath, index_col=0)
     mapped, _ = annotator.map(df)
     df_ncbitaxon = mapped[mapped["matchId"].str.startswith("NCBI:")]
@@ -154,7 +171,7 @@ def map(filepath, output_dir):
     mapped = pd.concat([mapped, df_ncbitaxon])
     mapped = mapped[mapped["queryId"] != mapped["matchId"]]
     output_dir.mkdir(parents=True, exist_ok=True)
-    map_filepath = output_dir / Path(filepath).name
+    map_filepath = output_dir / Path("mapped_" + Path(filepath).name)
     write(mapped, map_filepath, index=True)
     return str(map_filepath)
 
@@ -163,7 +180,7 @@ def concat(
     filepaths, output_filepath, drop=False, index_col=None, join="outer", axis=0
 ):
     output_filepath.parent.mkdir(parents=True, exist_ok=True)
-    frames = [read(f, index_col=index_col) for f in filepaths]
+    frames = [read(f, index_col=index_col) for f in filepaths if f]
     merged = pd.concat(frames, join=join, axis=axis)
     merged = merged.drop(columns=["integraph.id", "integraph.label"], errors="ignore")
     if drop:

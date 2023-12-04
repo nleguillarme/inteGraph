@@ -18,11 +18,16 @@ class MultipleMatchesException(Exception):
 
 
 class OntologyAnnotator(Annotator):
-    def __init__(self, ontology):
-        self.ontology = ontology
+    def __init__(self, config):
+        self.ontology = config.get("shortname", None)
 
     def annotate(
-        self, df, id_col, label_col, iri_col, source=None, target=None, replace=False
+        self,
+        df,
+        id_col,
+        label_col,
+        iri_col,
+        replace=False,  # source=None, target=None, replace=False
     ):
         assert id_col or label_col
         subset = [col for col in [id_col, label_col] if col]
