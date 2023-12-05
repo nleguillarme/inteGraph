@@ -1,5 +1,10 @@
 from integraph.etl.factory import create_etl_dag
-from integraph.util.config import read_config, validate_config, SCHEMA_SOURCE
+from integraph.util.config import (
+    read_config,
+    validate_config,
+    SCHEMA_SOURCE,
+    SCHEMA_GRAPH,
+)
 from integraph.util.path import ensure_path
 from integraph.util.connections import register_connections
 from distutils.util import strtobool
@@ -24,6 +29,7 @@ root_dir = ensure_path(
 )
 graph_path = root_dir / "graph.cfg"
 graph_cfg = read_config(root_dir / "graph.cfg")
+validate_config(graph_cfg, SCHEMA_GRAPH)
 logging.info(f"Found graph config at {graph_path}")
 
 ### Collect data sources

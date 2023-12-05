@@ -2,6 +2,34 @@ import inspect
 from cerberus import Validator
 from confection import Config
 
+SCHEMA_GRAPH = {
+    "graph": {
+        "required": True,
+        "type": "dict",
+        "schema": {
+            "id": {"type": "string", "required": True, "minlength": 2},
+        },
+    },
+    "sources": {
+        "required": True,
+        "type": "dict",
+        "schema": {
+            "dir": {"type": "string", "required": True, "minlength": 2},
+        },
+    },
+    "load": {
+        "required": True,
+        "type": "dict",
+    },
+    "ontologies": {
+        "required": False,
+        "type": "dict",
+        "valuesrules": {
+            "type": "string",
+        },
+    },
+}
+
 SCHEMA_TAXONOMY = {
     "type": {
         "type": "string",
