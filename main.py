@@ -1,5 +1,5 @@
 from integraph.etl.factory import create_etl_dag
-from integraph.util.config import read_config
+from integraph.util.config import read_config, validate_config, SCHEMA_SOURCE
 from integraph.util.path import ensure_path
 from integraph.util.connections import register_connections
 from distutils.util import strtobool
@@ -77,14 +77,15 @@ dag_args = {
 for src in sources:
     src_dir = sources_dir / src
     src_cfg = read_config(list(src_dir.glob("*.cfg"))[-1])
-    src_id = src_cfg["source"]["id"]
-    logger.info(f"Create DAG for source: {src_id}")
-    create_etl_dag(
-        base_iri=graph_cfg["graph"]["id"],
-        src_dir=src_dir,
-        src_config=src_cfg,
-        load_config=graph_cfg["load"],
-        dag_args=dag_args,
-        default_args=default_args,
-        run_in_test_mode=run_in_test_mode,
-    )
+    if validate_config(src_cfg, SCHEMA_SOURCE):
+        src_id = src_cfg["source"]["id"]
+        logger.info(f"Create DAG for source: {src_id}")
+        create_etl_dag(
+            base_iri=graph_cfg["graph"]["id"],
+            src_dir=src_dir,
+            src_config=src_cfg,
+            load_config=graph_cfg["load"],
+            dag_args=dag_args,
+            default_args=default_args,
+            run_in_test_mode=run_in_test_mode,
+        )

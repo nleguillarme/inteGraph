@@ -10,14 +10,6 @@ class UnsupportedTaxonomyException(Exception):
     pass
 
 
-class NoValidColumnException(Exception):
-    pass
-
-
-class ConfigurationError(Exception):
-    pass
-
-
 class MultipleMatch(Exception):
     pass
 
@@ -227,7 +219,7 @@ class TaxonomyAnnotator(Annotator):
                     ["SAME_AS", "SYNONYM_OF", "HAS_ACCEPTED_NAME"]
                 )
                 matching = matching[mask]
-                if kingdom:
+                if matcher == self.name_matcher and kingdom:
                     kingdom_mask = []
                     for _, row in matching.iterrows():
                         ranks = [rank.strip(" ") for rank in row["linNames"].split("|")]

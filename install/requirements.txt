@@ -2,7 +2,7 @@
 confection==0.0.4
 docker==6.0.1
 numpy==1.24.2
-# Owlready2==0.40
+cerberus
 text2term==2.2.0
 pandas==1.5.3
 pendulum==2.1.2
