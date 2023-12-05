@@ -1,5 +1,3 @@
-from pathlib import Path
-import text2term
 from .taxonomy import TaxonomyAnnotator
 from .ontology import OntologyAnnotator
 from .dictionary import DictionaryAnnotator
@@ -12,30 +10,25 @@ annotators = {
 annotators_config = {}
 
 
-def register_annotator(name, config):
-    annotators_config[name] = config
+def register_annotator(src_id, annotator, config):
+    if not annotators_config.get(src_id):
+        annotators_config[src_id] = {}
+    annotators_config[src_id][annotator] = config
 
 
-def get_annotator_config(name):
-    return annotators_config.get(name, None)
+def get_annotator_config(src_id, annotator):
+    if annotators_config.get(src_id):
+        return annotators_config.get(src_id).get(annotator, None)
+    return None
 
 
 TAXONOMIES = {"gbif", "ncbi", "indexfungorum", "silva", "eol"}
 
 
-# def needs_mapping(entity_cfg):
-#     for annotator in entity_cfg.get("annotators"):
-#         annotator_cfg = annotators_config.get(annotator, None)
-#         if annotator_cfg:
-#             if annotator_cfg.get("type") == "taxonomy":
-#                 return True
-#     return False
-
-
 class AnnotatorFactory:
     @classmethod
-    def get_annotator(self, name):
-        annotator_cfg = annotators_config.get(name, None)
+    def get_annotator(self, src_id, name):
+        annotator_cfg = get_annotator_config(src_id, name)
         if annotator_cfg:
             ann_type = annotator_cfg.get("type")
             annotator = annotators.get(ann_type, None)
@@ -46,19 +39,3 @@ class AnnotatorFactory:
             raise Exception(
                 f"Cannot find configuration information for annotator {name}"
             )
-        # annotator_cfg = get_annotator(name)
-        # if annotator_cfg:
-        #     ann_type = annotator_cfg.get("type")
-        #     if ann_type in "taxonomy":
-        #         return TaxonomyAnnotator(annotator_cfg)
-        #     if ann_type in "ontology":
-        #         # if text2term.cache_exists(str(label)):
-        #         return OntologyAnnotator(annotator_cfg)
-        #     if ann_type in "map":
-        #         # if Path(label).suffix == ".yml":
-        #         return DictionaryAnnotator(annotator_cfg)
-        #     raise Exception
-        # else:
-        #     raise Exception(
-        #         f"Cannot find configuration information for annotator {name}"
-        #     )

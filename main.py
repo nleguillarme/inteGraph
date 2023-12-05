@@ -14,11 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 run_in_test_mode = strtobool(os.getenv("INTEGRAPH__EXEC__TEST_MODE", default="false"))
-# print(
-#     "run_in_test_mode",
-#     run_in_test_mode,
-#     os.getenv("INTEGRAPH__EXEC__TEST_MODE", default="False").lower(),
-# )
 if run_in_test_mode == True:
     logger.info("Run in dev mode. The load module is skipped in dev mode.")
 
@@ -93,15 +88,3 @@ for src in sources:
         default_args=default_args,
         run_in_test_mode=run_in_test_mode,
     )
-    # create_etl_dag(
-    #     graph_base_iri=graph_cfg["core"]["base_iri"],
-    #     prov_metadata=src_cfg["core"].get("source_metadata"),
-    #     src_id=src_id,
-    #     src_dir=src_dir,
-    #     extract_cfg=src_cfg["extract"],
-    #     transform_cfg=src_cfg["transform"],
-    #     load_cfg=graph_cfg["load"],
-    #     dag_args=dag_args,
-    #     default_args=default_args,
-    #     run_in_test_mode=run_in_test_mode,
-    # )

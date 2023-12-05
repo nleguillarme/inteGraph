@@ -33,9 +33,9 @@ class ETLFactory:
             raise UnsupportedSourceException()
 
     @classmethod
-    def get_transform(self, root_dir, config, graph_id, metadata):
+    def get_transform(self, src_id, root_dir, config, graph_id, metadata):
         if config["format"] == "csv":
-            return TransformCSV(root_dir, config, graph_id, metadata).transform
+            return TransformCSV(src_id, root_dir, config, graph_id, metadata).transform
         else:
             raise UnsupportedFormatException(config["format"])
 
@@ -63,7 +63,7 @@ def create_etl_dag(
     for annotator in annotators_config:
         config = annotators_config[annotator]
         config["src_dir"] = src_dir
-        register_annotator(annotator, config)
+        register_annotator(src_id, annotator, config)
 
     import pendulum
 
@@ -75,6 +75,7 @@ def create_etl_dag(
     ):  # , **dag_args):
         extract = ETLFactory.get_extract(src_dir, src_config["extract"])
         transform = ETLFactory.get_transform(
+            src_id,
             src_dir,
             src_config["transform"],
             graph_id=urljoin(base_iri, src_id),

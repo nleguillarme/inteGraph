@@ -10,8 +10,9 @@ from ..util.path import ensure_path
 
 
 class TransformCSV:
-    def __init__(self, root_dir, config, graph_id, metadata=None):
+    def __init__(self, src_id, root_dir, config, graph_id, metadata=None):
         self.tg_id = "transform"
+        self.src_id = src_id
         self.root_dir = ensure_path(root_dir)
         self.staging = StagingHelper(root_dir / "staging")
         self.graph_id = graph_id
@@ -70,7 +71,7 @@ class TransformCSV:
                         annotate_entity
                     )(
                         filepath=chunks,
-                        root_dir=self.root_dir,
+                        src_id=self.src_id,
                         entity=entity,
                         entity_cfg=self.cfg["annotate"][entity],
                         output_dir=self.staging["annotated"],

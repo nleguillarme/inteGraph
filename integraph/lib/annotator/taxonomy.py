@@ -18,6 +18,10 @@ class ConfigurationError(Exception):
     pass
 
 
+class MultipleMatch(Exception):
+    pass
+
+
 class TaxonomyAnnotator(Annotator):
     def __init__(self, config):
         self.nomer = NomerHelper()
@@ -26,9 +30,11 @@ class TaxonomyAnnotator(Annotator):
             "ncbi": "ncbi",
             "ifungorum": "indexfungorum",
             "silva": "globalnames",
-            "eol": "eol",
+            # "eol": "eol",
+            # "default": "ncbi",
         }
-        self.source = config.get("source", None)
+        logging.info(config)
+        self.source = config.get("source", "default")
         self.name_matcher = config.get("name_matcher", "ncbi")
         self.kingdom = config.get("kingdom", None)
         self.keep_only = config.get("targets", ["NCBI", "GBIF", "IF", "EOL"])
@@ -82,8 +88,14 @@ class TaxonomyAnnotator(Annotator):
                         [query_id] if id_col else [] + [query_name] if label_col else []
                     )
                     group_name = group_name[-1] if len(group_name) == 1 else group_name
-                    match = mapped.get_group(group_name).iloc[0]
-                except KeyError:
+                    if mapped.get_group(group_name).shape[0] > 1:
+                        logging.info(
+                            f"Multiple matches for taxon {iri_index} : {mapped.get_group(group_name)}"
+                        )
+                        raise MultipleMatch
+                    else:
+                        match = mapped.get_group(group_name).iloc[0]
+                except (KeyError, MultipleMatch):
                     mapping[iri_index] = {"iri": np.nan, "id": np.nan, "label": np.nan}
                 else:
                     mapping[iri_index] = {
@@ -120,12 +132,16 @@ class TaxonomyAnnotator(Annotator):
             names = normalize_names(names)
             taxa_to_annotate = taxa_to_annotate.replace({"integraph.label": names})
 
-        matcher = (
-            self.matchers[self.source]
-            if (id_col and self.source)
-            else self.name_matcher
+        # matcher = (
+        #     self.matchers[self.source]
+        #     if (id_col and self.source)
+        #     else self.name_matcher
+        # )
+        matcher = self.matchers.get(self.source, self.name_matcher)
+        logging.info(f"Received source {self.source}, use matcher {matcher}")
+        annotated = self.map_taxonomic_entities(
+            taxa_to_annotate, matcher=matcher, kingdom=self.kingdom
         )
-        annotated = self.map_taxonomic_entities(taxa_to_annotate, matcher)
         annotated = annotated[
             annotated["matchId"].str.startswith(tuple(TAXONOMIES.keys()))
         ]
@@ -145,7 +161,6 @@ class TaxonomyAnnotator(Annotator):
                 df.at[index, "integraph.id"] = mapping[iri_index]["id"]
                 df.at[index, "integraph.label"] = mapping[iri_index]["label"]
 
-        
         return df
 
     def map(
@@ -160,7 +175,9 @@ class TaxonomyAnnotator(Annotator):
         not_found = taxa_to_map
         for matcher in matchers:
             if not not_found.empty:
-                new_matches = self.map_taxonomic_entities(not_found, matcher=matcher)
+                new_matches = self.map_taxonomic_entities(
+                    not_found, matcher=matcher, kingdom=self.kingdom
+                )
 
                 if not new_matches.empty:
                     new_matches = new_matches[
@@ -179,9 +196,22 @@ class TaxonomyAnnotator(Annotator):
                             found_in_target.append(name)
 
                     not_found = not_found[~not_found[id_col].isin(found_in_target)]
-        return mapped, not_found
 
-    def map_taxonomic_entities(self, df, matcher):
+        df_ncbitaxon = mapped[mapped["matchId"].str.startswith("NCBI:")]
+        df_ncbitaxon["matchId"] = df_ncbitaxon["matchId"].apply(
+            lambda x: x.replace("NCBI:", "NCBITaxon:")
+        )
+        df_ncbitaxon["iri"] = df_ncbitaxon["iri"].apply(
+            lambda x: x.replace(
+                TAXONOMIES["NCBI:"]["url_prefix"],
+                TAXONOMIES["NCBITaxon:"]["url_prefix"],
+            )
+        )
+        mapped = pd.concat([mapped, df_ncbitaxon])
+        mapped = mapped[mapped["queryId"] != mapped["matchId"]]
+        return mapped  # , not_found
+
+    def map_taxonomic_entities(self, df, matcher, kingdom=None):
         """
         Validate all taxonomic identifiers in a DataFrame column against a given taxonomy
         """
@@ -196,6 +226,12 @@ class TaxonomyAnnotator(Annotator):
                 mask = matching["matchType"].isin(
                     ["SAME_AS", "SYNONYM_OF", "HAS_ACCEPTED_NAME"]
                 )
-                return matching[mask]
+                matching = matching[mask]
+                if kingdom:
+                    kingdom_mask = []
+                    for _, row in matching.iterrows():
+                        ranks = [rank.strip(" ") for rank in row["linNames"].split("|")]
+                        kingdom_mask.append(ranks and kingdom in ranks)
+                    matching = matching[kingdom_mask]
+                return matching
         return pd.DataFrame()
-

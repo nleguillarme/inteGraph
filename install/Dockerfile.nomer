@@ -1,7 +1,7 @@
 FROM ibmjava:sdk-alpine
 
 RUN apk add curl sudo
-RUN sudo sh -c '(curl -L https://github.com/globalbioticinteractions/nomer/releases/download/0.4.11/nomer.jar) > /usr/local/bin/nomer && chmod +x /usr/local/bin/nomer && nomer install-manpage' && nomer clean
+RUN sudo sh -c '(curl -L https://github.com/globalbioticinteractions/nomer/releases/download/0.5.5/nomer.jar) > /usr/local/bin/nomer && chmod +x /usr/local/bin/nomer && nomer install-manpage' && nomer clean
 WORKDIR /
 
 ENTRYPOINT ["sh", "-c"]
