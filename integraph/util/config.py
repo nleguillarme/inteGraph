@@ -142,10 +142,12 @@ SCHEMA_SOURCE = {
                         "type": "string",
                         "required": False,
                     },
-                    "id_vars": {
+                    "taxon_col": {
+                        "type": "string",
                         "required": False,
                     },
-                    "value_vars": {
+                    "measurement_cols": {
+                        "type": "list",
                         "required": False,
                     },
                     "index_col": {

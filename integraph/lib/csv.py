@@ -11,6 +11,79 @@ from ..util.path import ensure_path
 
 @task
 def to_ets(filepath, ets_config, delimiter, output_dir):
+    """Turn tabular data to ETS format
+
+    Parameters
+    ----------
+    filepath : _type_
+        _description_
+    ets_config : _type_
+        _description_
+    delimiter : _type_
+        _description_
+    output_dir : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+
+    # Read input data
+    index_col = ets_config.get("index_col", None)
+    df = read(filepath, sep=delimiter, index_col=index_col)
+
+    # Unpivot data frame from wide to long format
+    id_vars = ets_config.get("taxon_col")
+    value_vars = ets_config.get("measurement_cols")
+
+    if id_vars and value_vars:
+        df = pd.melt(
+            df,
+            id_vars=id_vars,
+            value_vars=value_vars,
+            var_name="verbatimTraitName",
+            value_name="verbatimTraitValue",
+            ignore_index=False,
+        )
+        # df = df.dropna(subset="traitValue")
+        if ets_config.get("na", None):
+            df["verbatimTraitValue"] = (
+                df["verbatimTraitValue"]
+                .astype(str)
+                .replace(str(ets_config.get("na")), np.nan)
+            )
+        df = df.dropna(subset="verbatimTraitValue").rename(
+            columns={id_vars: "verbatimScientificName"}
+        )
+
+    # Create unit column
+    vars_to_units = ets_config.get("units", None)
+    if vars_to_units:
+        for var in value_vars:
+            vars_to_units[var] = vars_to_units.get(var)
+        df["verbatimTraitUnit"] = df["verbatimTraitName"].replace(vars_to_units)
+        df = df[
+            ~(
+                (df["verbatimTraitUnit"] == "binary")
+                & (df["verbatimTraitValue"].astype(str).isin(["0", "0.0"]))
+            )
+        ]
+
+    index_col = index_col if index_col else "index"
+    df = df.reset_index().rename(columns={index_col: "occurrenceID"})
+    df = df.reset_index().rename(columns={"index": "measurementID"})
+
+    output_dir = ensure_path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    ets_filepath = output_dir / Path(filepath).name
+    write(df, ets_filepath, sep=delimiter, index=True)
+    return str(ets_filepath)
+
+
+@task
+def old_to_ets(filepath, ets_config, delimiter, output_dir):
     id_vars = ets_config.get("id_vars")
     value_vars = ets_config.get("value_vars")
     output_dir = ensure_path(output_dir)

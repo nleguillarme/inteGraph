@@ -22,8 +22,6 @@ class TaxonomyAnnotator(Annotator):
             "ncbi": "ncbi",
             "ifungorum": "indexfungorum",
             "silva": "globalnames",
-            # "eol": "eol",
-            # "default": "ncbi",
         }
         logging.info(config)
         self.source = config.get("source", "default")
@@ -134,9 +132,11 @@ class TaxonomyAnnotator(Annotator):
         annotated = self.map_taxonomic_entities(
             taxa_to_annotate, matcher=matcher, kingdom=self.kingdom
         )
-        annotated = annotated[
-            annotated["matchId"].str.startswith(tuple(TAXONOMIES.keys()))
-        ]
+
+        if not annotated.empty:
+            annotated = annotated[
+                annotated["matchId"].str.startswith(tuple(TAXONOMIES.keys()))
+            ]
 
         by = ["queryId"] if id_col else [] + ["queryName"] if label_col else []
         by = (
@@ -162,7 +162,7 @@ class TaxonomyAnnotator(Annotator):
         taxa_to_map = (
             df.dropna(subset=id_col).drop_duplicates(subset=subset).replace("", np.nan)
         )
-        mapped = None
+        mapped = pd.DataFrame()
         matchers = ["wikidata-web", target]
         not_found = taxa_to_map
         for matcher in matchers:
@@ -189,19 +189,20 @@ class TaxonomyAnnotator(Annotator):
 
                     not_found = not_found[~not_found[id_col].isin(found_in_target)]
 
-        df_ncbitaxon = mapped[mapped["matchId"].str.startswith("NCBI:")]
-        df_ncbitaxon["matchId"] = df_ncbitaxon["matchId"].apply(
-            lambda x: x.replace("NCBI:", "NCBITaxon:")
-        )
-        df_ncbitaxon["iri"] = df_ncbitaxon["iri"].apply(
-            lambda x: x.replace(
-                TAXONOMIES["NCBI:"]["url_prefix"],
-                TAXONOMIES["NCBITaxon:"]["url_prefix"],
+        if not mapped.empty:
+            df_ncbitaxon = mapped[mapped["matchId"].str.startswith("NCBI:")]
+            df_ncbitaxon["matchId"] = df_ncbitaxon["matchId"].apply(
+                lambda x: x.replace("NCBI:", "NCBITaxon:")
             )
-        )
-        mapped = pd.concat([mapped, df_ncbitaxon])
-        mapped = mapped[mapped["queryId"] != mapped["matchId"]]
-        return mapped  # , not_found
+            df_ncbitaxon["iri"] = df_ncbitaxon["iri"].apply(
+                lambda x: x.replace(
+                    TAXONOMIES["NCBI:"]["url_prefix"],
+                    TAXONOMIES["NCBITaxon:"]["url_prefix"],
+                )
+            )
+            mapped = pd.concat([mapped, df_ncbitaxon])
+            mapped = mapped[mapped["queryId"] != mapped["matchId"]]
+        return mapped
 
     def map_taxonomic_entities(self, df, matcher, kingdom=None):
         """
