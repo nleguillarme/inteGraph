@@ -4,11 +4,11 @@
 
 ### Installation
 
-1. Clone the project repository
+Clone the project repository
 ``` console
 git clone https://github.com/nleguillarme/inteGraph.git
 ```
-2. Run install.sh
+Run install.sh
 ``` console
 cd inteGraph ; sh install.sh
 ```
