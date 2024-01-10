@@ -24,7 +24,12 @@ This website is under active development ! If you do not find the information yo
 
 ### User manual
 
-*Coming soon.*
+1. Installation
+1. Running `inteGraph`
+1. Create a new project
+   1. Graph configuration
+   1. Data source configuration
+1. Pipeline execution and monitoring
 
 ### Cite inteGraph
 
