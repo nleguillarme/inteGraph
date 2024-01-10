@@ -63,7 +63,7 @@ my-project/
 
 | Property | Description | Values
 | --- | --- | --- |
-| `id` | The base IRI of the knowledge graph.<br />It will be used to generate a graph label IRI for each data source. | *Example:* `http://leca.osug.fr/example` |
+| `id` | The base IRI of the knowledge graph.<br />It will be used to generate a graph label IRI for each data source. | <ins>Example<ins>: `http://leca.osug.fr/example` |
 
 **[sources]**
 
