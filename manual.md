@@ -1,5 +1,7 @@
 ## User manual
 
+[<<](index.md) Back to homepage
+
 ### Installation
 
 1. Clone the project repository
