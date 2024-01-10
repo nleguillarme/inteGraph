@@ -6,6 +6,12 @@ This website is under active development ! If you do not find the information yo
 
 [![Image providing a high-level overview of inteGraph.](/images/integraph-overview.png)](https://raw.githubusercontent.com/nleguillarme/inteGraph/gh-pages/images/integraph-overview.png)
 
+`inteGraph` is a semantic data integration toolbox designed to help ecologists make the most of available biodiversity data, regardless of the initial format and location of these data. `inteGraph` implements a declarative approach to building Extract-Transform-Load (ETL) pipelines that transform your structured data into RDF, thus minimizing the amount of manual effort and Semantic Web expertise required to publish data as or integrate heterogenenous data into FAIR biodiversity knowledge graphs.
+
+#### Features
+
+-
+
 ### User manual
 
 *Coming soon.*
