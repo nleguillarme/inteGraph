@@ -59,13 +59,13 @@ my-project/
 
 *inteGraph* uses an INI-like file to configure the knowledge graph creation process. This configuration file can contain the following sections:
 
-##### [core]
+**[core]**
 
 | Property | Description | Values
 | --- | --- | --- |
 | `id` | The base IRI of the knowledge graph.<br />It will be used to generate a graph label IRI for each data source. | **Example:** `http://leca.osug.fr/example` |
 
-##### [sources]
+**[sources]**
 
 This section can be empty, in which case **inteGraph** will use the default property values.
 
@@ -73,7 +73,7 @@ This section can be empty, in which case **inteGraph** will use the default prop
 | --- | --- | --- |
 | `dir` | The path to the directory containing the configuration of the data sources.<br /> It can be absolute or relative to the directory containing `graph.cfg`. | **Default:** `sources` |
 
-##### [load]
+**[load]**
 
 This section contains configuration properties for connecting to the triplestore. The properties in this section vary depending on the triplestore implementation.
 
@@ -86,6 +86,14 @@ This section contains configuration properties for connecting to the triplestore
 | `user`       | The user login. <br /> The user should have read/write permissions to the repository. | **Example:** `integraph` |
 | `password`   | The user password.   | **Example:** `p@ssw0rd` |
 | `repository` | The identifier of the target repository. | **Example:** `my-kg` |
+
+**[ontologies]**
+
+This section is **optional** and is used to declare the ontologies that will be searched during semantic annotation of your data. 
+
+Each line in this section is a key-value pair `name=iri` where `name` will be used as the ontology's internal identifier and `iri` is the ontology's IRI or a valid path to the ontology.
+
+**Example:** `sfwo=http://purl.org/sfwo/sfwo.owl`
 
 #### Data source configuration
 
