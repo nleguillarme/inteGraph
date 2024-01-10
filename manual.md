@@ -57,7 +57,35 @@ my-project/
 
 #### Graph configuration
 
-*Coming soon.*
+*inteGraph* uses an INI-like file to configure the knowledge graph creation process. This configuration file can contain the following sections:
+
+##### [core]
+
+| Property | Description | Values
+| --- | --- | --- |
+| `id` | The base IRI of the knowledge graph.<br />It will be used to generate a graph label IRI for each data source. | **Example:** `http://leca.osug.fr/example` |
+
+##### [sources]
+
+This section can be empty, in which case **inteGraph** will use the default property values.
+
+| Property | Description | Values
+| --- | --- | --- |
+| `dir` | The path to the directory containing the configuration of the data sources.<br /> It can be absolute or relative to the directory containing `graph.cfg`. | **Default:** `sources` |
+
+##### [load]
+
+This section contains configuration properties for connecting to the triplestore. The properties in this section vary depending on the triplestore implementation.
+
+| Property | Description | Values
+| --- | --- | --- |
+| `id`         | The identifier of the triplestore implementation. | **Valid:** `graphdb` |
+| `conn_type`  | The type of connection. | **Valid:** `http` |
+| `host`       | The URL or IP address of the host. | **Valid:** a URL or a IP address <br /> **Example:** `0.0.0.0` |
+| `port`       | The port number. | **Example:** `7200` (the default port for GraphDB) |
+| `user`       | The user login. <br /> The user should have read/write permissions to the repository. | **Example:** `integraph` |
+| `password`   | The user password.   | **Example:** `p@ssw0rd` |
+| `repository` | The identifier of the target repository. | **Example:** `my-kg` |
 
 #### Data source configuration
 
