@@ -4,7 +4,7 @@ This website is under active development ! If you do not find the information yo
 
 ### What is inteGraph?
 
-![Image providing a high-level overview of inteGraph.](/images/integraph-overview.png)
+[![Image providing a high-level overview of inteGraph.](/images/integraph-overview.png)](https://raw.githubusercontent.com/nleguillarme/inteGraph/gh-pages/images/integraph-overview.png)
 
 ### User manual
 
