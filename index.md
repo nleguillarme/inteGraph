@@ -26,10 +26,8 @@ This website is under active development ! If you do not find the information yo
 
 1. [Installation](manual.md#installation)
 1. [Running inteGraph](manual.md#running-integraph)
-1. Create a new project
-   1. Graph configuration
-   1. Data source configuration
-1. Pipeline execution and monitoring
+1. [Create a new project](manual.md#create-a-new-project)
+1. [Pipeline execution and monitoring](manual.md#pipeline-execution-and-monitoring)
 
 ### Cite inteGraph
 
