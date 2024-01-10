@@ -1,37 +1,20 @@
-## Welcome to GitHub Pages
+## Welcome to the homepage of inteGraph
 
-You can use the [editor on GitHub](https://github.com/nleguillarme/inteGraph/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+This website is under active development ! If you do not find the information you are looking for, please [contact us](#contact-us) or come back later.
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+### What is inteGraph?
 
-### Markdown
+*Coming soon.*
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+### User manual
 
-```markdown
-Syntax highlighted code block
+*Coming soon.*
 
-# Header 1
-## Header 2
-### Header 3
+### Cite inteGraph
 
-- Bulleted
-- List
+If you used inteGraph in your work, please cite Le Guillarme, N., & Thuiller, W. (2023). [A practical approach to constructing a knowledge graph for soil ecological research](https://www.sciencedirect.com/science/article/abs/pii/S116455632300033X). European Journal of Soil Biology, 117, 103497.
 
-1. Numbered
-2. List
+### Contact us
 
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [Basic writing and formatting syntax](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/nleguillarme/inteGraph/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+- Nicolas Le Guillarme: [nicolas.leguillarme(at)univ-grenoble-alpes(dot)fr](nicolas.leguillarme@univ-grenoble-alpes.fr)
+- Issue tracker: https://github.com/nleguillarme/integraph/issues
