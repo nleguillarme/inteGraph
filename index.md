@@ -6,9 +6,9 @@ This website is under active development ! If you do not find the information yo
 
 [![Image providing a high-level overview of inteGraph.](/images/integraph-overview.png)](https://raw.githubusercontent.com/nleguillarme/inteGraph/gh-pages/images/integraph-overview.png)
 
-`inteGraph` is a biodiversity data semantification and integration toolbox designed to help ecologists make the most of available data, regardless of the initial format and location of these data. 
+**inteGraph** is a biodiversity data semantification and integration toolbox designed to help ecologists make the most of available data, regardless of the initial format and location of these data. 
 
-`inteGraph` implements a declarative approach to building Extract-Transform-Load (ETL) pipelines that transform your structured data into RDF, thus minimizing the amount of manual effort and Semantic Web expertise required to publish your data as or integrate heterogenenous data into FAIR biodiversity knowledge graphs.
+**inteGraph** implements a declarative approach to building Extract-Transform-Load (ETL) pipelines that transform your structured data into RDF, thus minimizing the amount of manual effort and Semantic Web expertise required to publish your data as or integrate heterogenenous data into FAIR biodiversity knowledge graphs.
 
 #### Features
 
@@ -24,8 +24,8 @@ This website is under active development ! If you do not find the information yo
 
 ### User manual
 
-1. Installation
-1. Running `inteGraph`
+1. [Installation](installation.md)
+1. Running **inteGraph**
 1. Create a new project
    1. Graph configuration
    1. Data source configuration
@@ -33,12 +33,12 @@ This website is under active development ! If you do not find the information yo
 
 ### Cite inteGraph
 
-If you used inteGraph in your work, please cite our EJSB paper:
+If you used **inteGraph** in your work, please cite our EJSB paper:
 
 Le Guillarme, N., & Thuiller, W. (2023). [A practical approach to constructing a knowledge graph for soil ecological research](https://www.sciencedirect.com/science/article/abs/pii/S116455632300033X). European Journal of Soil Biology, 117, 103497.
 
 ### Contact us
 
-Please use the [GitHub repository's Issue tracker](https://github.com/nleguillarme/integraph/issues) to report errors or specific concerns related to the use of inteGraph.
+Please use the [GitHub repository's Issue tracker](https://github.com/nleguillarme/integraph/issues) to report errors or specific concerns related to the use of **inteGraph**.
 
 For all other enquiries, please contact Nicolas Le Guillarme: [nicolas.leguillarme(at)univ-grenoble-alpes(dot)fr](nicolas.leguillarme@univ-grenoble-alpes.fr)
