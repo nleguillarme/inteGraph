@@ -1,2 +1,5 @@
 theme: jekyll-theme-minimal
 logo: /images/integraph-logo.png
+title:
+description: A semantic data integration toolbox for biodiversity sciences.
+show_downloads: true
