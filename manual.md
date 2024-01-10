@@ -1,4 +1,4 @@
-## User manual
+# User manual
 
 [<<](index.md) Back to homepage
 
