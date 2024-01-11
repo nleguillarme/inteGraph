@@ -145,6 +145,20 @@ language=en
 
 #### [annotators]
 
+This section allows you to define any number of semantic annotators. The role of a semantic annotator is to match a piece of data with the concept in the target ontology/taxonomy that best captures its meaning.
+
+To create a new annotator, add a new subsection `[annotators.MyNewAnnotator]` where `MyNewAnnotator` should be a unique identifier for the annotator. This subsection can contain the following properties:
+
+| Property | Description | Values
+| --- | --- | --- |
+| `type` | The type of the semantic annotatior. | Valid: `taxonomy`, `ontology`, `map` |
+| `source` | If `type=taxonomy` |  |
+| `targets` | If `type=taxonomy` |  |
+| `filter_on_ranks` | If `type=taxonomy` |  |
+| `multiple_match` | If `type=taxonomy` |  |
+| `shortname` | If `type=ontology`, the short name of the target ontology (see [Graph configuration](#ontologies)) |  |
+| `mapping_file` | If `type=map`,  |  |
+
 *Under construction.*
 
 ## Pipeline execution and monitoring
