@@ -159,6 +159,10 @@ To create a new annotator, add a new subsection `[annotators.MyNewAnnotator]` wh
 | `shortname` | If `type=ontology`, the short name of the target ontology (see [Graph configuration](#ontologies)). | string, example `sfwo` |
 | `mapping_file` | If `type=map`, the name of a YAML file containing label-IRI mappings. | path, example `mapping.yml` |
 
+#### [extract]
+
+#### [transform]
+
 *Under construction.*
 
 ## Pipeline execution and monitoring
