@@ -2,6 +2,11 @@
 
 [<<](index.md) Back to homepage
 
+1. [Installation](#installation)
+1. [Running inteGraph](#running-integraph)
+1. [Create a new project](#create-a-new-project)
+1. [Pipeline execution and monitoring](#pipeline-execution-and-monitoring)
+
 ## Installation
 
 Clone the project repository
