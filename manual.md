@@ -64,7 +64,7 @@ my-project/
 
 *inteGraph* uses an INI-like file to configure the knowledge graph creation process. This configuration file can contain the following sections:
 
-#### [core]
+#### [graph]
 
 | Property | Description | Values
 | --- | --- | --- |
@@ -94,7 +94,7 @@ This section contains configuration properties for connecting to the triplestore
 
 #### [ontologies]
 
-This section is optional and is used to declare the ontologies that will be searched during semantic annotation of your data. Each line is a key-value pair `shortname=iri` where `shortname` will be used as the ontology's internal identifier and `iri` is the ontology's IRI or a valid path to the ontology.
+This section is optional and is used to declare the ontologies that will be searched during the semantic annotation of your data. Each line is a key-value pair `shortname=iri` where `shortname` will be used as the ontology's internal identifier and `iri` is the ontology's IRI or a valid path to the ontology.
 
 Below is an example graph configuration file:
 ``` ini
@@ -117,7 +117,35 @@ sfwo="http://purl.org/sfwo/sfwo.owl"
 
 ### Data source configuration
 
-*Coming soon.*
+Each data source to be integrated into the knowledge graph must have its own INI-like configuration file. To add a new data source to your **inteGraph** project, create a new directory in your sources directory, and create a file `source.cfg` in this directory. This configuration file can contain the following sections:
+
+#### [source]
+
+| Property | Description | Values
+| --- | --- | --- |
+| `id` | The internal unique identifier of the data source. | Example: `source_1` |
+
+#### [source.metadata]
+
+This subsection can be empty. You can use it to specify metadata about the data source using any of the fifteen terms in the [Dublin Core™ Metadata Element Set](https://www.dublincore.org/specifications/dublin-core/dcmi-terms/) (also known as "the Dublin Core").
+
+Below is an example `[source.metadata]` section specifying metadata for [the BETSI database](https://portail.betsi.cnrs.fr/):
+
+``` ini
+[source.metadata]
+title=A database for soil invertebrate biological and ecological traits
+creator=Hedde et al.
+subject=araneae, carabidae, chilopoda, diplopoda, earthworms, isopoda
+description=The Biological and Ecological Traits of Soil Invertebrates database (BETSI, https://portail.betsi.cnrs.fr/) is a European database dedicated specifically to soil organisms’ traits.
+date=2021
+format=csv
+identifier=hal-03581637
+language=en
+```
+
+#### [annotators]
+
+*Under construction.*
 
 ## Pipeline execution and monitoring
 
