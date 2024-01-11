@@ -2,7 +2,7 @@
 
 [<<](index.md) Back to homepage
 
-### Installation
+## Installation
 
 Clone the project repository
 ``` console
@@ -13,7 +13,7 @@ Run install.sh
 cd inteGraph ; sh install.sh
 ```
 
-### Running inteGraph
+## Running inteGraph
 
 To run **inteGraph** in Docker you just need to execute the following:
 ``` console
@@ -35,11 +35,11 @@ To exit **inteGraph** and properly close all containers, run the following comma
 make down
 ```
 
-### Create a new project
+## Create a new project
 
 The structure of a typical **inteGraph** project looks like the following:
 
-``` console
+```
 my-project/
 |-- graph.cfg
 |-- connections.json
@@ -55,17 +55,17 @@ my-project/
 |   |   |-- mapping.xlsx
 ```
 
-#### Graph configuration
+### Graph configuration: `graph.cfg`
 
 *inteGraph* uses an INI-like file to configure the knowledge graph creation process. This configuration file can contain the following sections:
 
-**[core]**
+#### [core]
 
 | Property | Description | Values
 | --- | --- | --- |
-| `id` | The base IRI of the knowledge graph.<br />It will be used to generate a graph label IRI for each data source. | Example: `http://leca.osug.fr/example` |
+| `id` | The base IRI of the knowledge graph.<br />It will be used to generate a graph label IRI for each data source. | Example: `http://leca.osug.fr/my_kg` |
 
-**[sources]**
+#### [sources]
 
 This section can be empty, in which case **inteGraph** will use the default property values.
 
@@ -73,7 +73,7 @@ This section can be empty, in which case **inteGraph** will use the default prop
 | --- | --- | --- |
 | `dir` | The path to the directory containing the configuration of the data sources.<br /> It can be absolute or relative to the directory containing `graph.cfg`. | Default: `sources` |
 
-**[load]**
+#### [load]
 
 This section contains configuration properties for connecting to the triplestore. The properties in this section vary depending on the triplestore implementation.
 
@@ -81,24 +81,39 @@ This section contains configuration properties for connecting to the triplestore
 | --- | --- | --- |
 | `id`         | The identifier of the triplestore implementation. | Valid: `graphdb` |
 | `conn_type`  | The type of connection. | Valid: `http` |
-| `host`       | The URL or IP address of the host. | Valid: `a URL or a IP address` <br /> Example: `0.0.0.0` |
-| `port`       | The port number. | Example: `7200` (the default port for GraphDB) |
+| `host`       | The URL or IP address of the host. | Example: `0.0.0.0` |
+| `port`       | The port number. | Example: `7200` |
 | `user`       | The user login. <br /> The user should have read/write permissions to the repository. | Example: `integraph` |
 | `password`   | The user password.   | Example: `p@ssw0rd` |
 | `repository` | The identifier of the target repository. | Example: `my-kg` |
 
-**[ontologies]**
+#### [ontologies]
 
-This section is optional and is used to declare the ontologies that will be searched during semantic annotation of your data. 
+This section is optional and is used to declare the ontologies that will be searched during semantic annotation of your data. Each line is a key-value pair `shortname=iri` where `shortname` will be used as the ontology's internal identifier and `iri` is the ontology's IRI or a valid path to the ontology.
 
-Each line in this section is a key-value pair `name=iri` where `name` will be used as the ontology's internal identifier and `iri` is the ontology's IRI or a valid path to the ontology.
+Below is an example graph configuration file:
+```
+[graph]
+id=http://leca.osug.fr/my_kg
 
-Example: `sfwo=http://purl.org/sfwo/sfwo.owl`
+[sources]
+dir=sources
 
-#### Data source configuration
+[load]
+id=graphdb
+conn_type=http
+host=129.88.204.79
+port=7200
+repository=my-kg
+
+[ontologies]
+sfwo="http://purl.org/sfwo/sfwo.owl"
+```
+
+### Data source configuration
 
 *Coming soon.*
 
-### Pipeline execution and monitoring
+## Pipeline execution and monitoring
 
 *Coming soon.*
