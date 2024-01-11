@@ -6,18 +6,18 @@
 
 Clone the project repository
 ``` console
-git clone https://github.com/nleguillarme/inteGraph.git
+$ git clone https://github.com/nleguillarme/inteGraph.git
 ```
 Run install.sh
 ``` console
-cd inteGraph ; sh install.sh
+$ cd inteGraph ; sh install.sh
 ```
 
 ## Running inteGraph
 
 To run **inteGraph** in Docker you just need to execute the following:
 ``` console
-make up
+$ make up
 ```
 This will create and start a set of containers that you can list with the `docker ps` command:
 ``` console
@@ -32,14 +32,14 @@ In particular, this starts an instance of the Airflow scheduler and webserver. T
 
 To exit **inteGraph** and properly close all containers, run the following command:
 ``` console
-make down
+$ make down
 ```
 
 ## Create a new project
 
 The structure of a typical **inteGraph** project looks like the following:
 
-```
+``` bash
 my-project/
 |-- graph.cfg
 |-- connections.json
@@ -92,7 +92,7 @@ This section contains configuration properties for connecting to the triplestore
 This section is optional and is used to declare the ontologies that will be searched during semantic annotation of your data. Each line is a key-value pair `shortname=iri` where `shortname` will be used as the ontology's internal identifier and `iri` is the ontology's IRI or a valid path to the ontology.
 
 Below is an example graph configuration file:
-```
+``` ini
 [graph]
 id=http://leca.osug.fr/my_kg
 
