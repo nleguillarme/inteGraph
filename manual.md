@@ -68,7 +68,7 @@ my-project/
 
 | Property | Description | Values
 | --- | --- | --- |
-| `id` | The base IRI of the knowledge graph.<br />It will be used to generate a graph label IRI for each data source. | Example: `http://leca.osug.fr/my_kg` |
+| `id` | The base IRI of the knowledge graph.<br />It will be used to generate a graph label IRI for each data source. | iri, example `http://leca.osug.fr/my_kg` |
 
 #### [sources]
 
@@ -76,7 +76,7 @@ This section can be empty, in which case **inteGraph** will use the default prop
 
 | Property | Description | Values
 | --- | --- | --- |
-| `dir` | The path to the directory containing the configuration of the data sources.<br /> It can be absolute or relative to the directory containing `graph.cfg`. | Default: `sources` |
+| `dir` | The path to the directory containing the configuration of the data sources.<br /> It can be absolute or relative to the directory containing `graph.cfg`. | path, default `sources` |
 
 #### [load]
 
@@ -84,13 +84,13 @@ This section contains configuration properties for connecting to the triplestore
 
 | Property | Description | Values
 | --- | --- | --- |
-| `id`         | The identifier of the triplestore implementation. | Valid: `graphdb` |
-| `conn_type`  | The type of connection. | Valid: `http` |
-| `host`       | The URL or IP address of the host. | Example: `0.0.0.0` |
-| `port`       | The port number. | Example: `7200` |
-| `user`       | The user login. <br /> The user should have read/write permissions to the repository. | Example: `integraph` |
-| `password`   | The user password.   | Example: `p@ssw0rd` |
-| `repository` | The identifier of the target repository. | Example: `my-kg` |
+| `id`         | The identifier of the triplestore implementation. | {`graphdb`, `rdfox`} |
+| `conn_type`  | The type of connection. | {`http`} |
+| `host`       | The URL or IP address of the host. | url or ip, example `0.0.0.0` |
+| `port`       | The port number. | int, example `7200` |
+| `user`       | The user login. <br /> The user should have read/write permissions to the repository. | str, optional, example `integraph` |
+| `password`   | The user password.   | str, optional, example `p@ssw0rd` |
+| `repository` | The identifier of the target repository. | str, example `my-kg` |
 
 #### [ontologies]
 
@@ -123,7 +123,7 @@ Each data source to be integrated into the knowledge graph must have its own INI
 
 | Property | Description | Values
 | --- | --- | --- |
-| `id` | The internal unique identifier of the data source. | Example: `source_1` |
+| `id` | The internal unique identifier of the data source. | str, example `source_1` |
 
 #### [source.metadata]
 
@@ -156,8 +156,8 @@ To create a new annotator, add a new subsection `[annotators.MyNewAnnotator]` wh
 | `targets` | If `type=taxonomy`, an ordered list containing the identifiers of the target taxonomies. | list, optional, default `["NCBI", "GBIF", "IF", "EOL", "OTT"]` |
 | `filter_on_ranks` | If `type=taxonomy`, a list of taxa which will be used to restrict the search when trying to match taxa on the basis of their scientific names. | list, optional, example: `["Eukaryota", "Protista", "Protozoa"]`  |
 | `multiple_match` | If `type=taxonomy`, how multiple matches are handled.  | {`strict`, `warning`, `ignore`}, optional, default `warning` |
-| `shortname` | If `type=ontology`, the short name of the target ontology (see [Graph configuration](#ontologies)). | string |
-| `mapping_file` | If `type=map`, the name of a YAML file containing label-IRI mappings. | path |
+| `shortname` | If `type=ontology`, the short name of the target ontology (see [Graph configuration](#ontologies)). | string, example `sfwo` |
+| `mapping_file` | If `type=map`, the name of a YAML file containing label-IRI mappings. | path, example `mapping.yml` |
 
 *Under construction.*
 
