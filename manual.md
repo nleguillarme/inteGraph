@@ -151,13 +151,13 @@ To create a new annotator, add a new subsection `[annotators.MyNewAnnotator]` wh
 
 | Property | Description | Values
 | --- | --- | --- |
-| `type` | The type of the semantic annotatior. | Valid: `taxonomy`, `ontology`, `map` |
-| `source` | If `type=taxonomy` |  |
-| `targets` | If `type=taxonomy` |  |
-| `filter_on_ranks` | If `type=taxonomy` |  |
-| `multiple_match` | If `type=taxonomy` |  |
-| `shortname` | If `type=ontology`, the short name of the target ontology (see [Graph configuration](#ontologies)) |  |
-| `mapping_file` | If `type=map`,  |  |
+| `type` | The type of the semantic annotatior. | {`taxonomy`, `ontology`, `map`} |
+| `source` | If `type=taxonomy`, the identifier of the taxonomy used by the data source. | {`NCBI`, `GBIF`,`IF`}, optional |
+| `targets` | If `type=taxonomy`, an ordered list containing the identifiers of the target taxonomies. | list, optional, default `["NCBI", "GBIF", "IF", "EOL", "OTT"]` |
+| `filter_on_ranks` | If `type=taxonomy`, a list of taxa which will be used to restrict the search when trying to match taxa on the basis of their scientific names. | list, optional, example: `["Eukaryota", "Protista", "Protozoa"]`  |
+| `multiple_match` | If `type=taxonomy`, how multiple matches are handled.  | {`strict`, `warning`, `ignore`}, optional, default `warning` |
+| `shortname` | If `type=ontology`, the short name of the target ontology (see [Graph configuration](#ontologies)). | string |
+| `mapping_file` | If `type=map`, the name of a YAML file containing label-IRI mappings. | path |
 
 *Under construction.*
 
