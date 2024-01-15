@@ -178,9 +178,35 @@ type=ontology
 shortname=sfwo
 ```
 
-##### A note on the different types of semantic annotators:
+**A note on the different types of semantic annotators:** *[TODO]*
 
 #### [extract]
+
+This section allows you to configure the part of the pipeline responsible for extracting or copying raw data from the data sources and storing it in a staging area. A staging area is an intermediate storage location for the temporary storage of extracted and transformed data.
+
+In the current version of **inteGraph**, data can be extract data from two types of data sources:
+- File-like data sources: **inteGraph** can download files from local or remote data sources by specifying the local path or URL of the data file. Archive files, including compressed archives, are supported.
+- REST API data sources: **inteGraph** can retrieve data from remote data sources accessible via REST APIs. Paginated results are supported, provided the API uses offset-based pagination (using the limit and offset request parameters).
+
+The properties in the [extract] section vary depending on the data source type.
+
+### [extract.file]
+
+| Property | Description | Values
+| --- | --- | --- |
+| `file_path` | The local path or URL of the data file.<br /> It can be absolute or relative to the directory containing `source.cfg`. | path |
+| `file_name` |  | string, optional |
+| `file` |  | string, optional |
+
+### [extract.api]
+
+| Property | Description | Values
+| --- | --- | --- |
+| `conn_id` | The connection identifier. | string, example `globi` |
+| `endpoint` | The API endpoint. | string, optional |
+| `query` | The query specifying what data is returned from the remote data source. | string |
+| `headers` | Headers containing additional information about the request. | dict, optional |
+| `limit` | The maximum number of results per page in case of paginated results. | int, optional |
 
 #### [transform]
 
