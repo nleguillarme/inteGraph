@@ -194,9 +194,9 @@ This subsection contains configuration properties for extracting data from a fil
 
 | Property | Description | Values
 | --- | --- | --- |
-| `file_path` | The local path or URL of the data file.<br /> It can be absolute or relative to the directory containing `source.cfg`. | path |
-| `file_name` |  | string, optional |
-| `file` |  | string, optional |
+| `file_path` | The local path or URL of the data file.<br /> It can be absolute or relative to the directory containing `source.cfg`. | path
+| `file_name` |  | string, optional
+| `file` |  | string, optional
 
 #### [extract.api]
 
@@ -204,11 +204,11 @@ This subsection contains configuration properties for extracting data from a RES
 
 | Property | Description | Values
 | --- | --- | --- |
-| `conn_id` | The connection identifier. | string, example `globi` |
-| `endpoint` | The API endpoint. | string, optional |
-| `query` | The query specifying what data is returned from the remote data source. | string |
-| `headers` | Headers containing additional information about the request. | dict, optional |
-| `limit` | The maximum number of results per page in case of paginated results. | int, optional, default `None` |
+| `conn_id` | The connection identifier. | string, example `globi`
+| `endpoint` | The API endpoint. | string, optional
+| `query` | The query specifying what data is returned from the remote data source. | string
+| `headers` | Headers containing additional information about the request. | dict, optional
+| `limit` | The maximum number of results per page in case of paginated results. | int, optional, default `None`
 
 #### [transform]
 
@@ -216,9 +216,9 @@ This section allows you to configure the part of the pipeline responsible for tr
 
 | Property | Description | Values
 | --- | --- | --- |
-| `format` | The format of the extracted data. | `{csv}` |
-| `delimiter` | The character to treat as the delimiter/separator. | string, optional, default `","` |
-| `chunksize` | The size of the data chunks processed in parallel. | int, optional, default `1000` |
+| `format` | The format of the extracted data. | `{csv}`
+| `delimiter` | The character to treat as the delimiter/separator. | string, optional, default `","`
+| `chunksize` | The size of the data chunks processed in parallel. | int, optional, default `1000`
 
 Data transformation involves a series of operations, some of which are optional:
 - data cleansing (`cleanse`)
@@ -261,7 +261,12 @@ To annotate an entity, add a new subsection `[transform.annotate.MyEntity]` wher
 
 #### [transform.triplify]
 
-*Under construction.*
+This subsection lets you specify the path to the spreadsheet containing your RDF mapping rules. These are rules used to transform tabular data into a RDF graph.
+**inteGraph** uses [Mapeathor](https://github.com/oeg-upm/mapeathor) to translate mapping rules specified in spreadsheets to RDF Mapping Language (RML) rules, and [Morph-KGC](https://morph-kgc.readthedocs.io/en/latest/) to execute the RML rules and construct (materialize) the RDF graph.
+
+| Property | Description | Values
+| --- | --- | --- |
+| `mapping` | The path to the spreadsheet containing mapping rules.<br /> It can be absolute or relative to the directory containing `source.cfg`. | path, example `mapping.xlsx`
 
 ## Pipeline execution and monitoring
 
