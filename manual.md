@@ -147,7 +147,7 @@ language=en
 
 This section allows you to define any number of semantic annotators. The role of a semantic annotator is to match a piece of data with the concept in the target ontology/taxonomy that best captures its meaning.
 
-To create a new annotator, add a new subsection `[annotators.MyNewAnnotator]` where `MyNewAnnotator` should be a unique identifier for the annotator. This subsection can contain the following properties:
+To create a new annotator, add a new subsection `[annotators.MyAnnotator]` where `MyAnnotator` should be a unique identifier for the annotator. This subsection can contain the following properties:
 
 | Property | Description | Values
 | --- | --- | --- |
@@ -212,13 +212,19 @@ This subsection contains configuration properties for extracting data from a RES
 
 #### [transform]
 
-This section allows you to configure the part of the pipeline responsible for transforming the extracted data stored in the staging area into an RDF graph. Data transformation involves a series of operations, some of which are optional: data cleansing (`cleanse`), format standardization (`ets`), semantic annotation (`annotate`) and RDF graph materialization (`triplify`).
+This section allows you to configure the part of the pipeline responsible for transforming the extracted data stored in the staging area into an RDF graph.
 
 | Property | Description | Values
 | --- | --- | --- |
 | `format` | The format of the extracted data. | `{csv}` |
 | `delimiter` | The character to treat as the delimiter/separator. | string, optional, default `","` |
 | `chunksize` | The size of the data chunks processed in parallel. | int, optional, default `1000` |
+
+Data transformation involves a series of operations, some of which are optional:
+- data cleansing (`cleanse`)
+- format standardization (`ets`)
+- semantic annotation (`annotate`)
+- RDF graph materialization (`triplify`)
 
 #### [transform.cleanse]
 
@@ -233,6 +239,27 @@ This subsection is optional. It is used to specify the path to an external scrip
 #### [transform.ets]
 
 This subsection is optional. It provides configuration properties for formatting data in accordance with the [Ecological Trait-data Standard](https://github.com/EcologicalTraitData/ETS).
+
+| Property | Description | Values
+| --- | --- | --- |
+| `na` | The string(s) to recognize as NaN. | string or list, optional
+| `taxon_col` | The name of the column contaning scientific names for taxa. | string, optional
+| `measurement_cols` | The names of the columns contaning the measured trait values. | list, optional
+| `additional_cols` | The names of additional columns to be retained in the input data. | list, optional
+
+#### [transform.annotate]
+
+This subsection is used to associate a semantic annotator (or a sequence of annotators) with a subset of your data describing a specific entity, e.g. a taxon, an ecological interaction, a functional trait, etc.
+
+To annotate an entity, add a new subsection `[transform.annotate.MyEntity]` where `MyEntity` should be a unique identifier for the entity. This subsection can contain the following properties:
+
+| Property | Description | Values
+| --- | --- | --- |
+| `label` | The name of the column containing the label of the entity. | string, optional
+| `id` | The name of the column containing the identifier of the entity in the source taxonomy/ontology. | string, optional
+| `annotators` | An ordered list of semantic annotators. | list, example `["SFWO", "YAMLMap"]`
+
+#### [transform.triplify]
 
 *Under construction.*
 
