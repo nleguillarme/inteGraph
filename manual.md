@@ -159,6 +159,27 @@ To create a new annotator, add a new subsection `[annotators.MyNewAnnotator]` wh
 | `shortname` | If `type=ontology`, the short name of the target ontology (see [Graph configuration](#ontologies)). | string, example `sfwo` |
 | `mapping_file` | If `type=map`, the name of a YAML file containing label-IRI mappings. | path, example `mapping.yml` |
 
+Below is an example of an `[annotators]` section containing an example declaration for each type of semantic annotator:
+
+``` ini
+[annotators]
+
+[annotators.TaxonAnnotator]
+type=taxonomy
+filter_on_ranks=["Metazoa", "Animalia"]
+targets=["NCBI", "GBIF", "OTT"]
+
+[annotators.YAMLMap]
+type=map
+mapping_file=mapping.yml
+
+[annotators.SFWO]
+type=ontology
+shortname=sfwo
+```
+
+##### A note on the different types of semantic annotators:
+
 #### [extract]
 
 #### [transform]
