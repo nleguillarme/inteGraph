@@ -178,7 +178,7 @@ type=ontology
 shortname=sfwo
 ```
 
-**A note on the different types of semantic annotators:** *[TODO]*
+**Note on the different types of semantic annotators:** *[TODO]*
 
 #### [extract]
 
@@ -188,7 +188,7 @@ In the current version of **inteGraph**, data can be extract data from two types
 - File-like data sources: **inteGraph** can download files from local or remote data sources by specifying the local path or URL of the data file. Archive files, including compressed archives, are supported.
 - REST API data sources: **inteGraph** can retrieve data from remote data sources accessible via REST APIs. Paginated results are supported, provided the API uses offset-based pagination (using the limit and offset request parameters).
 
-### [extract.file]
+#### [extract.file]
 
 This subsection contains configuration properties for extracting data from a file-like data source:
 
@@ -198,7 +198,7 @@ This subsection contains configuration properties for extracting data from a fil
 | `file_name` |  | string, optional |
 | `file` |  | string, optional |
 
-### [extract.api]
+#### [extract.api]
 
 This subsection contains configuration properties for extracting data from a REST API data source:
 
@@ -208,9 +208,31 @@ This subsection contains configuration properties for extracting data from a RES
 | `endpoint` | The API endpoint. | string, optional |
 | `query` | The query specifying what data is returned from the remote data source. | string |
 | `headers` | Headers containing additional information about the request. | dict, optional |
-| `limit` | The maximum number of results per page in case of paginated results. | int, optional |
+| `limit` | The maximum number of results per page in case of paginated results. | int, optional, default `None` |
 
 #### [transform]
+
+This section allows you to configure the part of the pipeline responsible for transforming the extracted data stored in the staging area into an RDF graph. Data transformation involves a series of operations, some of which are optional: data cleansing (`cleanse`), format standardization (`ets`), semantic annotation (`annotate`) and RDF graph materialization (`triplify`).
+
+| Property | Description | Values
+| --- | --- | --- |
+| `format` | The format of the extracted data. | `{csv}` |
+| `delimiter` | The character to treat as the delimiter/separator. | string, optional, default `","` |
+| `chunksize` | The size of the data chunks processed in parallel. | int, optional, default `1000` |
+
+#### [transform.cleanse]
+
+This subsection is optional. It is used to specify the path to an external script (Python or R) containing data cleansing operations specific to the data source.
+
+| Property | Description | Values
+| --- | --- | --- |
+| `script` | The path to a Python or R script containing data cleansing operations.<br /> It can be absolute or relative to the directory containing `source.cfg`. | path, optional
+
+**Note on writing a valid data cleansing script :** *[TODO]*
+
+#### [transform.ets]
+
+This subsection is optional. It provides configuration properties for formatting data in accordance with the [Ecological Trait-data Standard](https://github.com/EcologicalTraitData/ETS).
 
 *Under construction.*
 
