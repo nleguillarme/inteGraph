@@ -188,9 +188,9 @@ In the current version of **inteGraph**, data can be extract data from two types
 - File-like data sources: **inteGraph** can download files from local or remote data sources by specifying the local path or URL of the data file. Archive files, including compressed archives, are supported.
 - REST API data sources: **inteGraph** can retrieve data from remote data sources accessible via REST APIs. Paginated results are supported, provided the API uses offset-based pagination (using the limit and offset request parameters).
 
-The properties in the [extract] section vary depending on the data source type.
-
 ### [extract.file]
+
+This subsection contains configuration properties for extracting data from a file-like data source:
 
 | Property | Description | Values
 | --- | --- | --- |
@@ -199,6 +199,8 @@ The properties in the [extract] section vary depending on the data source type.
 | `file` |  | string, optional |
 
 ### [extract.api]
+
+This subsection contains configuration properties for extracting data from a REST API data source:
 
 | Property | Description | Values
 | --- | --- | --- |
