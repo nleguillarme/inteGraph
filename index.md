@@ -24,7 +24,7 @@ This website is under active development ! If you do not find the information yo
 
 ### Tutorial
 
-*Coming soon.*
+[This tutorial](tutorial.md) will help you get started with **inteGraph** by showing you how to create a trophic knowledge graph from two distributed data sources.
 
 ### User manual
 
