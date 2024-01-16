@@ -1,8 +1,9 @@
 ![](https://i.ibb.co/C0jzrCk/integraph-logo.png)
 
-`inteGraph` is a toolkit for ontology-based data integration in the biodiversity domain that allows generating data integration pipelines dynamically from configuration files, and scheduling and monitoring the execution of these pipelines.
+**inteGraph** is a biodiversity data semantification and integration toolbox designed to help ecologists make the most of available data, regardless of the initial format and location of these data. 
+**inteGraph** helps you build biodiversity knowledge graphs from distributed and heterogeneous data sources with almost no code.
 
-`inteGraph` is powered by [Apache Airflow](https://airflow.apache.org/).
+For more information, check [the homepage of the **inteGraph** project](https://nleguillarme.github.io/inteGraph/).
 
 ## Installation
 
@@ -15,39 +16,25 @@ git clone https://github.com/nleguillarme/inteGraph.git
 cd inteGraph ; sh install.sh
 ```
 
-## Running inteGraph
-
-To run inteGraph in Docker you just need to execute the following:
-``` console
-make up
-```
-This will create and start a set of containers that you can list with the `docker ps` command:
-``` console
-$ docker ps
-CONTAINER ID   IMAGE                         COMMAND                  CREATED         STATUS                   PORTS                                       NAMES
-21f4c8d28833   integraph-airflow-webserver   "/usr/bin/dumb-init …"   4 minutes ago   Up 3 minutes (healthy)   0.0.0.0:8080->8080/tcp, :::8080->8080/tcp   integraph-airflow-webserver-1
-ab066b04f9b8   integraph-airflow-scheduler   "/usr/bin/dumb-init …"   4 minutes ago   Up 3 minutes (healthy)   8080/tcp                                    integraph-airflow-scheduler-1
-3a5a84452e98   gnames/gognparser:latest      "gnparser -p 8778"       4 minutes ago   Up 4 minutes             0.0.0.0:8778->8778/tcp, :::8778->8778/tcp   integraph-gnparser-1
-70b2ec620cda   postgres:13                   "docker-entrypoint.s…"   8 minutes ago   Up 8 minutes (healthy)   5432/tcp                                    integraph-postgres-1
-```
-In particular, this starts an instance of the Airflow scheduler and webserver. The webserver is available at http://localhost:8080.
-
-To exit inteGraph and properly close all containers, run the following command:
-``` console
-make down
-```
-
 ## Building a biodiversity knowledge graph with inteGraph
 
-Check **[the wiki](https://github.com/nleguillarme/inteGraph/wiki)** to learn how to use `inteGraph` to integrate multiple heterogenenous data sources into a unified knowledge graph.
+Check **[the user manual](https://nleguillarme.github.io/inteGraph/manual.html)** to learn how to use **inteGraph**` to integrate multiple heterogenenous data sources into a biodiversity knowledge graph.
 
 ## Cite inteGraph
 
+If you used **inteGraph** in your work, please cite our EJSB paper:
+
 Le Guillarme, N., & Thuiller, W. (2023). [A practical approach to constructing a knowledge graph for soil ecological research](https://www.sciencedirect.com/science/article/pii/S116455632300033X). European Journal of Soil Biology, 117, 103497.
+
+## Contact us
+
+Please use the [GitHub repository's Issue tracker](https://github.com/nleguillarme/integraph/issues) to report errors or specific concerns related to the use of **inteGraph**.
+
+For all other enquiries, please contact Nicolas Le Guillarme: [nicolas.leguillarme(at)univ-grenoble-alpes(dot)fr](nicolas.leguillarme@univ-grenoble-alpes.fr)
 
 ## Acknowledgments
 
-`inteGraph` is running thanks to the following open-source softwares: [Mapeathor](https://github.com/oeg-upm/mapeathor), [Morph-KGC](https://morph-kgc.readthedocs.io/en/latest/), [nomer](https://github.com/globalbioticinteractions/nomer), [GNparser](https://github.com/gnames/gnparser), [confection](https://github.com/explosion/confection).
+**inteGraph** is running thanks to the following open-source softwares: [Mapeathor](https://github.com/oeg-upm/mapeathor), [Morph-KGC](https://morph-kgc.readthedocs.io/en/latest/), [nomer](https://github.com/globalbioticinteractions/nomer), [GNparser](https://github.com/gnames/gnparser), [confection](https://github.com/explosion/confection).
 
 ## License
 
@@ -55,4 +42,4 @@ License: Apache License 2.0
 
 ## Authors
 
-inteGraph was written by [nleguillarme](https://github.com/nleguillarme/).
+**inteGraph** was written by [nleguillarme](https://github.com/nleguillarme/).
