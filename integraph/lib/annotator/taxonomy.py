@@ -5,89 +5,57 @@ import pandas as pd
 import numpy as np
 import logging
 
+EXACT_MATCH_TERMS = ["SAME_AS", "HAS_ACCEPTED_NAME"]  # "SYNONYM_OF", ]
+
 
 class UnsupportedTaxonomyException(Exception):
     pass
 
 
-class NoValidColumnException(Exception):
-    pass
-
-
-class ConfigurationError(Exception):
+class MultipleMatch(Exception):
     pass
 
 
 class TaxonomyAnnotator(Annotator):
-    def __init__(self):
+    def __init__(self, config):
         self.nomer = NomerHelper()
         self.matchers = {
-            "gbif": "gbif",
-            "ncbi": "ncbi",
-            "ifungorum": "indexfungorum",
-            "silva": "globalnames",  # ncbi",
-            "eol": "eol",
+            "GBIF": "gbif",
+            "NCBI": "ncbi",
+            "IF": "indexfungorum",
+            "default": "globalnames",
         }
-        self.name_matcher = "ncbi"  # "globalnames"
-        self.keep_only = ["NCBI", "GBIF", "IF", "EOL"]
+        self.source = config.get("source", "default")
+        # self.name_matcher = config.get("name_matcher", "globalnames")
+        self.filters = config.get("filter_on_ranks", None)
+        if self.filters:
+            self.filters = (
+                [self.filters] if isinstance(self.filters, str) else self.filters
+            )
+        self.targets = config.get("targets", ["NCBI", "GBIF", "IF", "EOL", "OTT"])
+        self.multiple_match = config.get("multiple_match", "warning")
 
     def annotate(
-        self, df, id_col, label_col, iri_col, source=None, target="ncbi", replace=False
+        self,
+        df,
+        id_col,
+        label_col,
+        iri_col,
+        replace=False,
     ):
-        # Validate against source taxonomy
-        valid_df = self.validate(df, id_col, label_col, iri_col, source, replace)
-        return valid_df
-
-    def map(
-        self, df, id_col="integraph.id", label_col="integraph.label", target="ncbi"
-    ):
-        subset = [col for col in [id_col, label_col] if col]
-        drop_df = (
-            df.dropna(subset=id_col).drop_duplicates(subset=subset).copy()
-        ).replace("", np.nan)
-        matches = None
-        matchers = ["wikidata-web", target]
-        not_found_df = drop_df
-        for matcher in matchers:
-            if not not_found_df.empty:
-                new_matches = self.map_taxonomic_entities(not_found_df, matcher=matcher)
-                if not new_matches.empty:
-                    new_matches = new_matches[
-                        new_matches["matchId"].str.startswith(tuple(self.keep_only))
-                    ]
-                    matches = (
-                        pd.concat([matches, new_matches], ignore_index=True)
-                        if matches is not None
-                        else new_matches
-                    )
-                    mapped_ents = matches.groupby("queryId", dropna=False)
-                    # not_found_in_target = []
-                    # for name, group in mapped_ents:
-                    #     if group[group["matchId"].str.startswith(target.upper())].empty:
-                    #         not_found_in_target.append(name)
-                    # not_found_df = not_found_df[
-                    #     not_found_df[id_col].isin(not_found_in_target)
-                    # ]
-
-                    found_in_target = []
-                    for name, group in mapped_ents:
-                        if not group[
-                            group["matchId"].str.startswith(target.upper())
-                        ].empty:
-                            found_in_target.append(name)
-
-                    not_found_df = not_found_df[
-                        ~not_found_df[id_col].isin(found_in_target)
-                    ]
-        return matches, not_found_df
-
-    def validate(self, df, id_col, label_col, iri_col, source, replace):
-        def add_prefix(col, source):
+        def add_prefix(taxids, taxo):
             """
-            Add the source taxonomy name as a prefix to all taxids in a column
+            Prefix taxonomic ids in with the id of a taxonomy
+
+            Parameters
+            ----------
+            taxids : pandas.Series
+                A pandas.Series contaning the taxonomic ids.
+            taxo : str
+                The id of the taxonomy.
             """
 
-            def return_prefixed(id, source):
+            def build_prefixed_id(id, taxo):
                 if pd.notnull(id):
                     items = str(id).strip("\n").split(":")
                     if len(items) == 2:
@@ -98,83 +66,192 @@ class TaxonomyAnnotator(Annotator):
                     elif pd.isna(pd.to_numeric(id, errors="coerce")):
                         return np.nan
                     else:
-                        return f"{source.upper()}:{id}"
+                        return f"{taxo.upper()}:{id}"
                 return None
 
-            return col.map(lambda id: return_prefixed(id, source))
+            return taxids.map(lambda id: build_prefixed_id(id, taxo))
+
+        def build_taxon_index(taxon_info, id_col, label_col):
+            """
+            Return a tuple containing a taxon identifier and/or name if available
+
+            Parameters
+            ----------
+            taxon_info : pandas.Series
+                The row of a pandas.DataFrame contaning the information about a taxon.
+            id_col : str
+                The name of the column containing the taxonomic id.
+            label_col : str
+                The name of the column containing the scientific name.
+
+            Returns
+            -------
+            Tuple
+                A possibly empty tuple (taxid, sciName).
+            """
+            return ((taxon_info[id_col],) if id_col else ()) + (
+                (taxon_info[label_col],) if label_col else ()
+            )
+
+        def build_mapping_dict(queried, mapped, id_col, label_col):
+            """
+            Build a mapping between the taxa in the original pandas.DataFrame
+            and the match in the target taxonomies.
+
+            Parameters
+            ----------
+            queried : pandas.DataFrame
+                The original taxonomic data.
+            mapped : pandas.DataFrame
+                The result of taxonomic entity mapping.
+            id_col : str
+                The name of the column containing the taxonomic id.
+            label_col : str
+                The name of the column containing the scientific name.
+
+            Returns
+            -------
+            _type_
+                _description_
+
+            Raises
+            ------
+            MultipleMatch
+                _description_
+            """
+            mapping = {}
+            for _, row in queried.iterrows():
+                query_id = row["integraph.id"]
+                query_name = row["integraph.label"]
+                iri_index = build_taxon_index(row, id_col, label_col)
+                try:
+                    group_name = (
+                        [query_id] if id_col else [] + [query_name] if label_col else []
+                    )
+                    group_name = group_name[-1] if len(group_name) == 1 else group_name
+                    match = mapped.get_group(group_name)
+                    preferred_match = self.handle_multiple_match(iri_index, match)
+                except (KeyError, MultipleMatch):
+                    mapping[iri_index] = {"iri": np.nan, "id": np.nan, "label": np.nan}
+                else:
+                    mapping[iri_index] = {
+                        "iri": preferred_match["iri"],
+                        "id": preferred_match["matchId"],
+                        "label": preferred_match["matchName"],
+                    }
+            return mapping
 
         assert id_col or label_col
         subset = [col for col in [id_col, label_col] if col]
-        sub_df = df[subset].astype(pd.StringDtype(), errors="ignore")
-        sub_df[iri_col] = np.nan if replace else df[iri_col]
-        sub_df["integraph.id"] = np.nan if replace else df["integraph.id"]
-        sub_df["integraph.label"] = np.nan if replace else df["integraph.label"]
+        df = df[subset].astype(pd.StringDtype(), errors="ignore")
+        if replace:
+            df.loc[:, [iri_col, "integraph.id", "integraph.label"]] = np.nan
 
-        drop_df = sub_df[sub_df[iri_col].isna()]
-        drop_df = sub_df.drop_duplicates(subset=subset).replace("", np.nan)
+        taxa_to_annotate = (
+            df[df[iri_col].isna()].drop_duplicates(subset=subset).replace("", np.nan)
+        )
 
-        if id_col:
-            if source:
-                if source in self.matchers:
-                    drop_df["integraph.id"] = add_prefix(drop_df[id_col], source)
-                else:
-                    raise UnsupportedTaxonomyException(
-                        f"Invalid taxonomy {source}. Possible values are {list(self.matchers.keys())}"
-                    )
+        # Prepare taxonomic data for annotation
+        if id_col and self.source != "default":
+            # Build prefixed taxonomic ids
+            taxa_to_annotate["integraph.id"] = add_prefix(
+                taxa_to_annotate[id_col], self.source
+            )
         if label_col:
-            drop_df["integraph.label"] = drop_df[label_col]
-            names = drop_df[label_col].dropna().to_list()
+            # Normalize scientific names using Global Names Parser
+            taxa_to_annotate["integraph.label"] = taxa_to_annotate[label_col]
+            names = taxa_to_annotate[label_col].dropna().to_list()
             names = normalize_names(names)
-            drop_df = drop_df.replace({"integraph.label": names})
+            taxa_to_annotate = taxa_to_annotate.replace({"integraph.label": names})
 
-        matcher = self.matchers[source] if (id_col and source) else self.name_matcher
-        valid_ents = self.map_taxonomic_entities(drop_df, matcher)
-        valid_ents = valid_ents[
-            valid_ents["matchId"].str.startswith(tuple(TAXONOMIES.keys()))
-        ]
+        matcher = self.matchers.get(self.source)
+        logging.info(f"Received source {self.source}, use matcher {matcher}")
+
+        filters = self.filters if self.source == "default" else None
+        annotated = self.map_taxonomic_entities(
+            taxa_to_annotate, matcher=matcher, filters=filters
+        )
 
         by = ["queryId"] if id_col else [] + ["queryName"] if label_col else []
         by = (
             by[-1] if len(by) == 1 else by
         )  # To remove pandas warning for lists of length 1
-        valid_ents = valid_ents.groupby(by, dropna=False)
+        annotated = annotated.groupby(by, dropna=False)
 
-        iri_map = {}
-        id_map = {}
-        label_map = {}
+        mapping = build_mapping_dict(taxa_to_annotate, annotated, id_col, label_col)
 
-        for index, row in drop_df.iterrows():
-            query_id = row["integraph.id"]
-            query_name = row["integraph.label"]
-            iri_index = ((row[id_col],) if id_col else ()) + (
-                (row[label_col],) if label_col else ()
-            )
-            try:
-                group_name = (
-                    [query_id] if id_col else [] + [query_name] if label_col else []
-                )
-                group_name = group_name[-1] if len(group_name) == 1 else group_name
-                valid = valid_ents.get_group(group_name).iloc[0]
-            except KeyError:
-                iri_map[iri_index] = np.nan
-                id_map[iri_index] = np.nan
-                label_map[iri_index] = np.nan
-            else:
-                iri_map[iri_index] = valid["iri"]
-                id_map[iri_index] = valid["matchId"]
-                label_map[iri_index] = valid["matchName"]
-
-        for index, row in sub_df.iterrows():
+        for index, row in df.iterrows():
             if pd.isna(row[iri_col]):
-                iri_index = ((row[id_col],) if id_col else ()) + (
-                    (row[label_col],) if label_col else ()
-                )
-                sub_df.at[index, iri_col] = iri_map[iri_index]
-                sub_df.at[index, "integraph.id"] = id_map[iri_index]
-                sub_df.at[index, "integraph.label"] = label_map[iri_index]
-        return sub_df
+                iri_index = build_taxon_index(row, id_col, label_col)
+                df.at[index, iri_col] = mapping[iri_index]["iri"]
+                df.at[index, "integraph.id"] = mapping[iri_index]["id"]
+                df.at[index, "integraph.label"] = mapping[iri_index]["label"]
 
-    def map_taxonomic_entities(self, df, matcher):
+        return df
+
+    def map(self, df, id_col="integraph.id", label_col="integraph.label"):
+        """Map taxonomic annotations to target taxonomies
+
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            A DataFrame with a column containing scientific names and a column containing taxonomic identifiers
+        id_col : str, optional
+            The name of the column containing taxonomic identifiers, by default "integraph.id"
+        label_col : str, optional
+            The name of the column containing scientific names, by default "integraph.label"
+        target : str, optional
+            _description_, by default "ncbi"
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        subset = [col for col in [id_col, label_col] if col]
+        taxa_to_map = (
+            df.dropna(subset=id_col).drop_duplicates(subset=subset).replace("", np.nan)
+        )
+        mapped = pd.DataFrame()
+        target = "ncbi"
+        not_found = taxa_to_map
+        for matcher in ["wikidata-web", "ott", target]:
+            # if not not_found.empty:
+            filters = self.filters if matcher == target else None
+            new_matches = self.map_taxonomic_entities(
+                not_found, matcher=matcher, filters=filters
+            )
+
+            if not new_matches.empty:
+                mapped = pd.concat([mapped, new_matches], ignore_index=True)
+                # found_in_target = []
+                # for name, group in mapped.groupby("queryId", dropna=False):
+                #     if not group[
+                #         group["matchId"].str.startswith(target.upper())
+                #     ].empty:
+                #         found_in_target.append(name)
+
+                # not_found = not_found[~not_found[id_col].isin(found_in_target)]
+
+        if not mapped.empty:
+            df_ncbitaxon = mapped[mapped["matchId"].str.startswith("NCBI:")]
+            df_ncbitaxon["matchId"] = df_ncbitaxon["matchId"].apply(
+                lambda x: x.replace("NCBI:", "NCBITaxon:")
+            )
+            df_ncbitaxon["iri"] = df_ncbitaxon["iri"].apply(
+                lambda x: x.replace(
+                    TAXONOMIES["NCBI:"]["url_prefix"],
+                    TAXONOMIES["NCBITaxon:"]["url_prefix"],
+                )
+            )
+            mapped = pd.concat([mapped, df_ncbitaxon])
+            mapped = mapped[mapped["queryId"] != mapped["matchId"]].drop_duplicates(
+                subset=["matchId"]
+            )
+
+        return mapped
+
+    def map_taxonomic_entities(self, df, matcher, filters=None):
         """
         Validate all taxonomic identifiers in a DataFrame column against a given taxonomy
         """
@@ -184,10 +261,69 @@ class TaxonomyAnnotator(Annotator):
             name_column="integraph.label",
         )
         if query:
-            matching = self.nomer.ask_nomer(query, matcher=matcher)
-            if not matching.empty:
-                mask = matching["matchType"].isin(
-                    ["SAME_AS", "SYNONYM_OF", "HAS_ACCEPTED_NAME"]
-                )
-                return matching[mask]
+            match = self.nomer.ask_nomer(query, matcher=matcher)
+
+            # Keep only exact match
+            if not match.empty:
+                mask = match["matchType"].isin(EXACT_MATCH_TERMS)
+                match = match[mask]
+
+            # Keep only match in target taxonomies
+            if not match.empty:
+                mask = match["matchId"].str.startswith(tuple(self.targets))
+                match = match[mask]
+
+            # Apply filters on taxonomic lineages
+            if not match.empty and filters:
+                mask = []
+                for _, row in match.iterrows():
+                    ranks = (
+                        [rank.strip(" ") for rank in row["linNames"].split("|")]
+                        if isinstance(row["linNames"], str)
+                        else []
+                    )
+                    mask.append(any([r in ranks for r in filters]))
+                match = match[mask]
+
+            return match
         return pd.DataFrame()
+
+    def handle_multiple_match(self, iri_index, match):
+        def get_preferred_match(match_per_target):
+            for target in self.targets:
+                if target in match_per_target and match_per_target[target]:
+                    return match_per_target[target][0]
+            return None
+
+        multiple_match = False
+        # Group match per target taxonomy
+        match_per_target = {}
+        for index, row in match.iterrows():
+            target_id = row["matchId"].split(":")[0]
+            if target_id not in match_per_target:
+                match_per_target[target_id] = []
+            match_per_target[target_id].append(index)
+
+        # For each target taxonomy, check if there is multiple match
+        for target_id in match_per_target:
+            match_in_target = match.loc[match_per_target[target_id]]
+            mask = match_in_target["matchType"].isin(EXACT_MATCH_TERMS)
+            multiple_match_in_target = match_in_target[mask].shape[0] > 1
+            if multiple_match_in_target:
+                if self.multiple_match != "ignore":
+                    logging.warn(
+                        f"Multiple matches for taxon {iri_index} in taxonomy {target_id} : {match_in_target}"
+                    )
+                multiple_match = multiple_match_in_target
+
+        if multiple_match and self.multiple_match == "strict":
+            raise MultipleMatch(f"Multiple matches for taxon {iri_index}: {match}")
+
+        print(match)
+        preferred_match_index = get_preferred_match(match_per_target)
+        print(preferred_match_index)
+        return (
+            match.loc[preferred_match_index]
+            if preferred_match_index is not None
+            else None
+        )

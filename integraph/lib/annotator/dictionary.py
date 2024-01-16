@@ -4,12 +4,18 @@ from .base import Annotator
 
 
 class DictionaryAnnotator(Annotator):
-    def __init__(self, filepath):
+    def __init__(self, config):
         self.dict = None
-        self._load(Path(filepath))
+        mapping_filepath = config["src_dir"] / config["mapping_file"]
+        self._load(Path(mapping_filepath))
 
     def annotate(
-        self, df, id_col, label_col, iri_col, source=None, target=None, replace=False
+        self,
+        df,
+        id_col,
+        label_col,
+        iri_col,
+        replace=False,  # source=None, target=None, replace=False
     ):
         import pandas as pd
         import numpy as np

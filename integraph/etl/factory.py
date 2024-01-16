@@ -4,6 +4,7 @@ from integraph.etl.extract_api import ExtractAPI
 from integraph.etl.extract_file import ExtractFile
 from integraph.etl.transform_csv import TransformCSV
 from integraph.etl.load_db import LoadDB
+from integraph.lib.annotator import register_annotator
 
 
 class UnsupportedSourceException(Exception):
@@ -32,9 +33,9 @@ class ETLFactory:
             raise UnsupportedSourceException()
 
     @classmethod
-    def get_transform(self, root_dir, config, graph_id, prov_metadata):
+    def get_transform(self, src_id, root_dir, config, graph_id, metadata):
         if config["format"] == "csv":
-            return TransformCSV(root_dir, config, graph_id, prov_metadata).transform
+            return TransformCSV(src_id, root_dir, config, graph_id, metadata).transform
         else:
             raise UnsupportedFormatException(config["format"])
 
@@ -47,17 +48,23 @@ class ETLFactory:
 
 
 def create_etl_dag(
-    graph_base_iri,
-    prov_metadata,
-    src_id,
+    base_iri,
     src_dir,
-    extract_cfg,
-    transform_cfg,
-    load_cfg,
+    src_config,
+    load_config,
     dag_args,
     default_args=None,
     run_in_test_mode=False,
 ):
+    src_id = src_config["source"]["id"]
+
+    # Register annotators
+    annotators_config = src_config["annotators"]
+    for annotator in annotators_config:
+        config = annotators_config[annotator]
+        config["src_dir"] = src_dir
+        register_annotator(src_id, annotator, config)
+
     import pendulum
 
     with DAG(
@@ -66,15 +73,15 @@ def create_etl_dag(
         start_date=pendulum.today(),
         default_args=default_args,
     ):  # , **dag_args):
-        graph_id = urljoin(graph_base_iri, src_id)
-        extract = ETLFactory.get_extract(src_dir, extract_cfg)
+        extract = ETLFactory.get_extract(src_dir, src_config["extract"])
         transform = ETLFactory.get_transform(
+            src_id,
             src_dir,
-            transform_cfg,
-            graph_id=graph_id,
-            prov_metadata=prov_metadata,
+            src_config["transform"],
+            graph_id=urljoin(base_iri, src_id),
+            metadata=src_config["source"]["metadata"],
         )
-        load = ETLFactory.get_load(src_dir, load_cfg)
+        load = ETLFactory.get_load(src_dir, load_config)
 
         if run_in_test_mode:
             transform(extract())

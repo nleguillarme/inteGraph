@@ -57,8 +57,7 @@ x-airflow-common:
     args:
       - DOCKER_UID=${AIRFLOW_UID}
       - DOCKER_GID=${DOCKER_GID}
-  environment:
-    &airflow-common-env
+  environment: &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     # For backward compatibility, with Airflow <2.3
@@ -79,6 +78,9 @@ x-airflow-common:
     # for other purpose (development, test and especially production usage) build/extend Airflow image.
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
     INTEGRAPH__EXEC__TEST_MODE: ${INTEGRAPH__EXEC__TEST_MODE}
+    INTEGRAPH__CONFIG__CACHE_DIR: ${INTEGRAPH__CONFIG__CACHE_DIR}
+    INTEGRAPH__CONFIG__NOMER_CACHE_DIR: ${INTEGRAPH__CONFIG__NOMER_CACHE_DIR}
+    INTEGRAPH__CONFIG__AIRFLOW_LOGS_DIR: ${INTEGRAPH__CONFIG__AIRFLOW_LOGS_DIR}
   volumes:
     # - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${PWD}:/opt/airflow/dags

@@ -51,6 +51,7 @@ def prepare_for_rml_execution(filepaths, rml_filepath, output_dir):
     morph_config_filepath = output_dir / "config.ini"
     create_morph_kgc_config(rml_filepath, morph_config_filepath)
 
+    # print(filepaths)
     for filepath in filepaths:
         copy_filepath = output_dir / ensure_path(filepath).name
         df = read(filepath)

@@ -1,5 +1,10 @@
 from integraph.etl.factory import create_etl_dag
-from integraph.util.config import read_config
+from integraph.util.config import (
+    read_config,
+    validate_config,
+    SCHEMA_SOURCE,
+    SCHEMA_GRAPH,
+)
 from integraph.util.path import ensure_path
 from integraph.util.connections import register_connections
 from distutils.util import strtobool
@@ -9,17 +14,13 @@ import os
 import json
 import text2term
 
+
 logger = logging.getLogger(__name__)
 
 
 run_in_test_mode = strtobool(os.getenv("INTEGRAPH__EXEC__TEST_MODE", default="false"))
-print(
-    "run_in_test_mode",
-    run_in_test_mode,
-    os.getenv("INTEGRAPH__EXEC__TEST_MODE", default="False").lower(),
-)
 if run_in_test_mode == True:
-    logger.info("Run in test mode. The load module is skipped in test mode.")
+    logger.info("Run in dev mode. The load module is skipped in dev mode.")
 
 
 ### Read graph config
@@ -28,6 +29,7 @@ root_dir = ensure_path(
 )
 graph_path = root_dir / "graph.cfg"
 graph_cfg = read_config(root_dir / "graph.cfg")
+validate_config(graph_cfg, SCHEMA_GRAPH)
 logging.info(f"Found graph config at {graph_path}")
 
 ### Collect data sources
@@ -81,17 +83,15 @@ dag_args = {
 for src in sources:
     src_dir = sources_dir / src
     src_cfg = read_config(list(src_dir.glob("*.cfg"))[-1])
-    src_id = src_cfg["core"]["source_id"]
-    logger.info(f"Create DAG for source: {src_id}")
-    create_etl_dag(
-        graph_base_iri=graph_cfg["core"]["base_iri"],
-        prov_metadata=src_cfg["core"].get("source_metadata"),
-        src_id=src_id,
-        src_dir=src_dir,
-        extract_cfg=src_cfg["extract"],
-        transform_cfg=src_cfg["transform"],
-        load_cfg=graph_cfg["load"],
-        dag_args=dag_args,
-        default_args=default_args,
-        run_in_test_mode=run_in_test_mode,
-    )
+    if validate_config(src_cfg, SCHEMA_SOURCE):
+        src_id = src_cfg["source"]["id"]
+        logger.info(f"Create DAG for source: {src_id}")
+        create_etl_dag(
+            base_iri=graph_cfg["graph"]["id"],
+            src_dir=src_dir,
+            src_config=src_cfg,
+            load_config=graph_cfg["load"],
+            dag_args=dag_args,
+            default_args=default_args,
+            run_in_test_mode=run_in_test_mode,
+        )
