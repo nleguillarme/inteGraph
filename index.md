@@ -22,6 +22,10 @@ This website is under active development ! If you do not find the information yo
 - Dockerized for easy deployment across different environments
 - Schedule and monitor pipelines execution using [Apache Airflow](https://airflow.apache.org/)
 
+### Tutorial
+
+*Coming soon.*
+
 ### User manual
 
 1. [Installation](manual.md#installation)
