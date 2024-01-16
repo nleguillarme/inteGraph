@@ -268,6 +268,67 @@ This subsection lets you specify the path to the spreadsheet containing your RDF
 | --- | --- | --- |
 | `mapping` | The path to the spreadsheet containing mapping rules.<br /> It can be absolute or relative to the directory containing `source.cfg`. | path, example `mapping.xlsx`
 
+Below is a complete example of a source configuration file for the BETSI database:
+
+``` ini
+[source]
+id=betsi
+
+[source.metadata]
+title=A database for soil invertebrate biological and ecological traits
+creator=Hedde et al
+subject=araneae, carabidae, chilopoda, diplopoda, earthworms, isopoda
+description=The Biological and Ecological Traits of Soil Invertebrates database (BETSI, https://portail.betsi.cnrs.fr/) is a European database dedicated specifically to soil organisms’ traits.
+date=2021
+format=csv
+identifier=hal-03581637
+language=en
+
+[annotators]
+
+[annotators.TaxonAnnotator]
+type=taxonomy
+filter_on_ranks=["Metazoa", "Animalia"]
+targets=["NCBI", "GBIF", "OTT"]
+
+[annotators.YAMLMap]
+type=map
+mapping_file=mapping.yml
+
+[annotators.SFWO]
+type=ontology
+shortname=sfwo
+
+[extract]
+
+[extract.file]
+file_path=data/BETSI_220221.csv
+
+[transform]
+format=csv
+delimiter=","
+chunksize=1000
+
+[transform.cleanse]
+script="clean.py"
+
+[transform.ets]
+na=NA
+
+[transform.annotate]
+
+[transform.annotate.taxon]
+label=taxon_name
+annotators=["TaxonAnnotator"]
+
+[transform.annotate.trait]
+label=attribute_trait
+annotators=["YAMLMap", "SFWO"]
+
+[transform.triplify]
+mapping=mapping.xlsx
+```
+
 ## Pipeline execution and monitoring
 
 *Coming soon.*
