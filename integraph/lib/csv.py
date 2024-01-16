@@ -35,7 +35,9 @@ def to_ets(filepath, ets_config, delimiter, output_dir):
     df = read(filepath, sep=delimiter, index_col=index_col)
 
     # Unpivot data frame from wide to long format
-    id_vars = ets_config.get("taxon_col")
+    taxon_col = ets_config.get("taxon_col", None)
+    id_vars = [taxon_col] if taxon_col else []
+    id_vars += ets_config.get("additional_cols", [])
     value_vars = ets_config.get("measurement_cols")
 
     if id_vars and value_vars:
@@ -55,7 +57,7 @@ def to_ets(filepath, ets_config, delimiter, output_dir):
                 .replace(str(ets_config.get("na")), np.nan)
             )
         df = df.dropna(subset="verbatimTraitValue").rename(
-            columns={id_vars: "verbatimScientificName"}
+            columns={taxon_col: "verbatimScientificName"}
         )
 
     # Create unit column
@@ -169,7 +171,8 @@ def annotate_entity(filepath, src_id, entity, entity_cfg, output_dir):
         map_filepath = task(task_id="concat_mappings")(concat)(
             filepaths=mapped_chunks,
             output_filepath=output_dir / entity / "mapped_all.tsv",
-            drop=False,
+            drop=True,
+            subset=["matchId"],
             index_col=0,
         )
 
@@ -201,9 +204,10 @@ def split(filepath, chunksize, delimiter, output_dir):
 
 def annotate(filepath, annotator, id_col, label_col, iri_col, replace, output_dir):
     df = read(filepath, index_col=0)
-    ann_df = annotator.annotate(
-        df, id_col, label_col, iri_col, replace
-    )  # source, target, replace)
+    ann_df = annotator.annotate(df, id_col, label_col, iri_col, replace)
+    ann_df[f"integraph_{iri_col}"] = df.index
+    mask = ann_df[iri_col].isna()
+    ann_df[f"integraph_{iri_col}"] = ann_df[f"integraph_{iri_col}"].mask(mask, "")
     output_dir.mkdir(parents=True, exist_ok=True)
     ann_filepath = output_dir / Path(filepath).name
     write(ann_df, ann_filepath, index=True)
@@ -221,14 +225,20 @@ def map(filepath, annotator, output_dir):
 
 
 def concat(
-    filepaths, output_filepath, drop=False, index_col=None, join="outer", axis=0
+    filepaths,
+    output_filepath,
+    drop=False,
+    subset=None,
+    index_col=None,
+    join="outer",
+    axis=0,
 ):
     output_filepath.parent.mkdir(parents=True, exist_ok=True)
     frames = [read(f, index_col=index_col) for f in filepaths if f]
     merged = pd.concat(frames, join=join, axis=axis)
     merged = merged.drop(columns=["integraph.id", "integraph.label"], errors="ignore")
     if drop:
-        merged = merged.drop_duplicates()
+        merged = merged.drop_duplicates(subset=subset)
     merged = merged.iloc[:, ~merged.columns.duplicated()]
     write(merged, output_filepath, index=True)
     return str(output_filepath)

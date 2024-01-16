@@ -57,6 +57,7 @@ class TransformCSV:
                     filepaths=chunks,
                     output_filepath=self.staging["chunked"] / "all.tsv",
                     drop=False,
+                    subset=None,
                     index_col=0,
                 )
 
@@ -86,6 +87,7 @@ class TransformCSV:
                     filepaths=map_filepaths,
                     output_filepath=self.staging["annotated"] / "integraph_taxa.tsv",
                     drop=True,
+                    subset=["matchId"],
                 )
 
                 # Concat annotations across entities and original data
@@ -93,24 +95,26 @@ class TransformCSV:
                     filepaths=[concat_chunks] + ann_filepaths,
                     output_filepath=self.staging["annotated"] / "integraph_data.tsv",
                     drop=False,
+                    subset=None,
                     index_col=0,
                     axis=1,
                 )
 
             with TaskGroup(group_id="generate_graph"):
-                self.staging.register("triplified")
+                with TaskGroup(group_id="generate_data_graph"):
+                    self.staging.register("triplified")
 
-                mapping_filepath = self.root_dir / self.cfg["triplify"]["mapping"]
+                    mapping_filepath = self.root_dir / self.cfg["triplify"]["mapping"]
 
-                rml_filepath = generate_rml(
-                    mapping_filepath, self.staging["triplified"] / "mapping"
-                )
+                    rml_filepath = generate_rml(
+                        mapping_filepath, self.staging["triplified"] / "mapping"
+                    )
 
-                data_graph_filepath = execute_rml(
-                    filepaths=[data_ann, taxo_ann],
-                    rml_filepath=rml_filepath,
-                    output_dir=self.staging["triplified"],
-                )
+                    data_graph_filepath = execute_rml(
+                        filepaths=[data_ann],  # , taxo_ann],
+                        rml_filepath=rml_filepath,
+                        output_dir=self.staging["triplified"],
+                    )
 
                 taxa_graph_filepath = task(task_id="generate_taxa_graph")(triplify)(
                     filepath=taxo_ann,

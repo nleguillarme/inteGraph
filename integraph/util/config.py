@@ -39,19 +39,20 @@ SCHEMA_TAXONOMY = {
     "source": {
         "type": "string",
         "required": False,
-        "allowed": ["gbif", "ncbi", "ifungorum", "silva"],
+        "allowed": ["GBIF", "NCBI", "IF", "default"],
     },
-    "kingdom": {
-        "type": "string",
+    "filter_on_ranks": {
+        "type": ["string", "list"],
         "required": False,
     },
     "targets": {
         "type": "list",
         "required": False,
     },
-    "name_matcher": {
+    "multiple_match": {
         "type": "string",
         "required": False,
+        "allowed": ["ignore", "warning", "strict"],
     },
 }
 
@@ -139,7 +140,7 @@ SCHEMA_SOURCE = {
                 "required": False,
                 "schema": {
                     "na": {
-                        "type": "string",
+                        "type": ["string", "number"],
                         "required": False,
                     },
                     "taxon_col": {
@@ -147,6 +148,10 @@ SCHEMA_SOURCE = {
                         "required": False,
                     },
                     "measurement_cols": {
+                        "type": "list",
+                        "required": False,
+                    },
+                    "additional_cols": {
                         "type": "list",
                         "required": False,
                     },
