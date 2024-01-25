@@ -101,9 +101,16 @@ def copy(filepath, output_dir):
 
 
 def is_archive(filepath):
+    import patoolib
+
     try:
-        with open(filepath, "r") as f:
-            f.read()
+        print(filepath)
+        patoolib.test_archive(filepath, verbosity=-1)
+    except patoolib.util.PatoolError as error:
+        print(str(error))
+        if str(error).startswith("unknown archive mime format"):
             return False
-    except:
+        else:
+            raise error
+    else:
         return True

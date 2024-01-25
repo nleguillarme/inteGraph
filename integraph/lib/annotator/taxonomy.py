@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import logging
 
-EXACT_MATCH_TERMS = ["SAME_AS", "HAS_ACCEPTED_NAME"]  # "SYNONYM_OF", ]
+# EXACT_MATCH_TERMS = ["SAME_AS", "HAS_ACCEPTED_NAME"]  # "SYNONYM_OF", ]
 
 
 class UnsupportedTaxonomyException(Exception):
@@ -25,6 +25,7 @@ class TaxonomyAnnotator(Annotator):
             "IF": "indexfungorum",
             "default": "globalnames",
         }
+        self.exact_match_terms = ["SAME_AS", "HAS_ACCEPTED_NAME"]
         self.source = config.get("source", "default")
         # self.name_matcher = config.get("name_matcher", "globalnames")
         self.filters = config.get("filter_on_ranks", None)
@@ -34,6 +35,9 @@ class TaxonomyAnnotator(Annotator):
             )
         self.targets = config.get("targets", ["NCBI", "GBIF", "IF", "EOL", "OTT"])
         self.multiple_match = config.get("multiple_match", "warning")
+        self.include_synonym = config.get("include_synonym", False)
+        if self.include_synonym:
+            self.exact_match_terms.append("SYNONYM_OF")
 
     def annotate(
         self,
@@ -265,7 +269,7 @@ class TaxonomyAnnotator(Annotator):
 
             # Keep only exact match
             if not match.empty:
-                mask = match["matchType"].isin(EXACT_MATCH_TERMS)
+                mask = match["matchType"].isin(self.exact_match_terms)
                 match = match[mask]
 
             # Keep only match in target taxonomies
@@ -307,7 +311,7 @@ class TaxonomyAnnotator(Annotator):
         # For each target taxonomy, check if there is multiple match
         for target_id in match_per_target:
             match_in_target = match.loc[match_per_target[target_id]]
-            mask = match_in_target["matchType"].isin(EXACT_MATCH_TERMS)
+            mask = match_in_target["matchType"].isin(self.exact_match_terms)
             multiple_match_in_target = match_in_target[mask].shape[0] > 1
             if multiple_match_in_target:
                 if self.multiple_match != "ignore":
@@ -319,9 +323,9 @@ class TaxonomyAnnotator(Annotator):
         if multiple_match and self.multiple_match == "strict":
             raise MultipleMatch(f"Multiple matches for taxon {iri_index}: {match}")
 
-        print(match)
+        # print(match)
         preferred_match_index = get_preferred_match(match_per_target)
-        print(preferred_match_index)
+        # print(preferred_match_index)
         return (
             match.loc[preferred_match_index]
             if preferred_match_index is not None

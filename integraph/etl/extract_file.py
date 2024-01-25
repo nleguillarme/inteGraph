@@ -4,10 +4,9 @@ from airflow.utils.task_group import TaskGroup
 from airflow.operators.bash import BashOperator
 
 # from airflow.operators.python import ShortCircuitOperator
-from ..lib.file import *
+from ..lib.file import get_url, fetch, unpack, copy, is_archive
 from ..util.staging import StagingHelper
 from ..util.path import ensure_path
-from airflow.utils.edgemodifier import Label
 
 
 class ExtractFile:
@@ -28,9 +27,12 @@ class ExtractFile:
                 url_task, self.staging["fetched"], filename=self.cfg.get("file_name")
             )
 
-            cmd = f"patool test {fetch_task} | tail -1"  # echo $?"
-            is_archive = BashOperator(task_id="is_archive", bash_command=cmd)
-            fetch_task >> is_archive
+            # cmd = f"patool test {fetch_task}"  # | tail -1"  # echo $?"
+            # is_archive = BashOperator(
+            #     task_id="is_archive", bash_command=cmd, do_xcom_push=True
+            # )
+            is_archive_task = task(is_archive)(filepath=fetch_task)
+            # fetch_task >> is_archive_task
 
             # @task.short_circuit()
             # def is_archive(return_code):
@@ -42,11 +44,7 @@ class ExtractFile:
 
             @task.branch(task_id="branch")
             def branch(return_code):
-                # if int(return_code) == 0:
-                #     return self.tg_id + ".unpack"
-                # else:
-                #     return self.tg_id + ".copy"
-                if return_code == "patool: ... tested ok.":
+                if return_code == True:
                     return self.tg_id + ".unpack"
                 else:
                     return self.tg_id + ".copy"
@@ -65,8 +63,11 @@ class ExtractFile:
 
             # Serve file to next task (transform)
             def serve(filepaths, file=None):
-                if file and file.exists():
-                    return str(file)
+                if file:
+                    if file.exists():
+                        return str(file)
+                    else:
+                        raise FileNotFoundError(file)
                 elif len(filepaths) == 1:
                     if type(filepaths[0]) is not list:
                         return str(filepaths[0])
@@ -85,9 +86,12 @@ class ExtractFile:
             # is_not_archive_task >> copy_task >> serve_task
 
             (
-                branch(is_archive.output)
-                >> [Label("yes") >> unpack_task, Label("no") >> copy_task]
+                # branch(is_archive.output)
+                branch(is_archive_task)
+                >> [unpack_task, copy_task]
                 >> serve_task
+                # >> [Label("yes") >> unpack_task, Label("no") >> copy_task]
+                # >> serve_task
             )
 
             return serve_task

@@ -54,6 +54,10 @@ SCHEMA_TAXONOMY = {
         "required": False,
         "allowed": ["ignore", "warning", "strict"],
     },
+    "include_synonym": {
+        "type": "boolean",
+        "required": False,
+    },
 }
 
 SCHEMA_ONTOLOGY = {

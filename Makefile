@@ -3,7 +3,7 @@ export INTEGRAPH__CONFIG__CACHE_DIR=${HOME}/.integraph
 export INTEGRAPH__CONFIG__NOMER_CACHE_DIR=${INTEGRAPH__CONFIG__CACHE_DIR}/.nomer
 export INTEGRAPH__CONFIG__AIRFLOW_LOGS_DIR=${INTEGRAPH__CONFIG__CACHE_DIR}/logs
 export INTEGRAPH__CONFIG__HOST_CONFIG_DIR=/home/leguilln/workspace/data_integration/gratin-kg
-export INTEGRAPH__EXEC__TEST_MODE=False
+export INTEGRAPH__EXEC__TEST_MODE=True
 
 init:
 	docker compose up airflow-init
