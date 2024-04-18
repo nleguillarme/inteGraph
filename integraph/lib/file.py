@@ -108,7 +108,7 @@ def is_archive(filepath):
         patoolib.test_archive(filepath, verbosity=-1)
     except patoolib.util.PatoolError as error:
         print(str(error))
-        if str(error).startswith("unknown archive mime format"):
+        if str(error).startswith("unknown archive"):
             return False
         else:
             raise error
