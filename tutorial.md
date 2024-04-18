@@ -26,7 +26,7 @@ In this section, we will show you how to set up an instance of GraphDB on your m
 
 The graph configuration file is **inteGraph**'s entry point for creating semantic data integration pipelines. The construction of our trophic knowledge graph begins with the creation of the graph configuration file.
 
-```
+```bash
 # Create a new project directory
 mkdir trophic-kg
 
@@ -37,7 +37,7 @@ touch graph.cfg
 
 The graph configuration file contains [up to four sections](https://nleguillarme.github.io/inteGraph/manual.html#create-a-new-project). Copy the following lines into the `graph.cfg` file we have just created:
 
-```
+```ini
 [graph]
 id=https://nleguillarme.github.io/inteGraph/tutorial/trophic-kg
 
@@ -55,9 +55,7 @@ repository=trophic-kg
 sfwo="http://purl.org/sfwo/sfwo.owl"
 ```
 
-### Set up connections to remote databases
-
-### Create the graph configuration file
+### Set up connections to remote databases (optional)
 
 ### Create the source configuration file for FungalTraits
 
