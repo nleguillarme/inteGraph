@@ -4,7 +4,23 @@
 
 *Under construction.*
 
-### Optional: create a repository
+## Building a knowledge graph on the trophic ecology of soil organisms using **inteGraph**
+
+In this tutorial, we will provide a step-by-step guide on how to harness the capabilities of **inteGraph** to create a knowledge graph on the trophic ecology of soil organisms from multiple data sources.
+
+### 0. (Optional) Set up a triplestore instance and create a repository
+
+Storing RDF knowledge graphs in simple files using one of the many available RDF serialisation formats (e.g. Turtle, TriG, N-Triples, N-Quads, JSON-LD) can be practical for smaller projects or scenarios where simplicity and portability are prioritised. However, it may not be suitable for large or highly interconnected knowledge graphs that require efficient querying and traversal. In such cases, the use of specialised RDF graph databases, also called triplestores, may be more appropriate.
+
+While **inteGraph** is not tied to a specific triplestore solution, it does provide connectors to help you load your RDF data into [GraphDB](https://graphdb.ontotext.com/documentation/10.6/) and [RDFox](https://docs.oxfordsemantic.tech/) repositories.
+
+In this section, we will show you how to set up an instance of GraphDB on your machine, create a repository for your trophic knowledge graph, and load the knowledge graph ontology into the repository.
+
+#### Set up a GraphDB instance
+
+#### Create a new repository
+
+#### Load the knowledge graph ontology
 
 ### Create an **inteGraph** project
 
