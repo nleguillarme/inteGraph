@@ -7,8 +7,8 @@
 ## Building a knowledge graph on the trophic ecology of soil organisms using **inteGraph**
 
 In this tutorial, we will provide a step-by-step guide on how to harness the capabilities of **inteGraph** to create a knowledge graph on the trophic ecology of carabid beetles (Carabidae) from multiple data sources. This knowledge graph will integrate data from two sources:
-- The Biological and Ecological Traits of Soil Invertebrates database (BETSI, https://portail.betsi.cnrs.fr/)
-- The Global Biotic Interactions database (GloBI, https://www.globalbioticinteractions.org/)
+- The Biological and Ecological Traits of Soil Invertebrates database (BETSI, [https://portail.betsi.cnrs.fr/](https://portail.betsi.cnrs.fr/))
+- The Global Biotic Interactions database (GloBI, [https://www.globalbioticinteractions.org/](https://www.globalbioticinteractions.org/))
 
 ### 0. Set up a triplestore instance and create a repository (optional) 
 
@@ -106,6 +106,15 @@ mkdir data
 wget <link> -P ./data
 ```
 
+Let's take a closer look at the contents of the BETSI database:
+
+| taxon_name                                                 | trait_name | attribute_trait | source_fauna      |
+|------------------------------------------------------------|------------|-----------------|-------------------|
+| Abacetus (Astigis)                                         | Diet       | Zoophage        | Larochelle (1990) |
+| Abax (Abax) ovalis (Duftschmid, 1812)                      | Diet       | Zoophage        | Larochelle (1990) |
+| Abax (Abax) ovalis (Duftschmid, 1812)                      | Diet       | Necrophagous    | Larochelle (1990) |
+| Abax (Abax) parallelepipedus (Piller & Mitterpacher, 1783) | Diet       | Zoophage        | Kromp, B. (1999)  |
+
 #### 3.1 Specify metadata for the source
 
 The first section of the source configuration file contains the data source identifier and source metadata. Although the latter is optional, it is recommended that you add source metadata to your knowledge graph to keep track of the provenance of information. Copy the following lines into the `source.cfg` file we have just created:
@@ -117,7 +126,7 @@ id=betsi
 [source.metadata]
 title=A database for soil invertebrate biological and ecological traits
 creator=Hedde et al
-subject=araneae, carabidae, chilopoda, diplopoda, earthworms, isopoda
+subject=carabidae
 description=The Biological and Ecological Traits of Soil Invertebrates database (BETSI, https://portail.betsi.cnrs.fr/) is a European database dedicated specifically to soil organisms’ traits.
 date=2021
 format=csv
@@ -126,6 +135,49 @@ language=en
 ```
 
 **inteGraph** will append the data source identifier to the graph base IRI specified in the graph configuration file to create the full IRI of the data source, here `https://nleguillarme.github.io/inteGraph/tutorial/trophic-kg/betsi`.
+
+#### 3.2 Define semantic annotators
+
+The role of a semantic annotator is to match a piece of data with the concept in the target ontology/taxonomy that best captures its meaning. **inteGraph** allows you to use three types of semantic annotators as part of your data integration pipelines:
+- Taxonomic annotator: map taxon names to entities in a target taxonomy, and/or map taxon identifiers from a source taxonomy to a target taxonomy ;
+- Ontology-based annotator: map free-text descriptions of entities to controlled terms in a target ontology ;
+- Dictionary-based annotator: map entities to controlled terms in a target ontology/taxonomy using a user-supplied YAML mapping file.
+
+All three types of semantic annotators are required to add semantic annotations to BETSI data:
+- A taxonomic annotator is used to map the names in the `taxon_name` column to taxonomic entities in the target taxonomy (NCBI) ;
+- An ontology-based annotator is used to map the dietary terms in the `attribute_trait` column to concepts in the target ontology (SFWO) ;
+- A dictionary-based annotator will be used to map the remaining dietary terms that do not have an exact match in the SFWO.
+
+Annotators are defined in the `[annotators]` section of the source configuration file. Copy the following lines at the end of `source.cfg`:
+
+```ini
+[annotators.TaxonAnnotator]
+type=taxonomy
+filter_on_ranks=["Carabidae"]
+targets=["NCBI"]
+
+[annotators.SFWO]
+type=ontology
+shortname=sfwo
+
+[annotators.YAMLMap]
+type=map
+mapping_file=mapping.yml
+```
+
+**N.B. (1)** the `shortname` property of an ontology-based annotator can only take the name of one of the ontologies specified in the `[ontologies]` section of the graph configuration file.
+
+**N.B. (2)** a dictionary-based annotator expects a YAML file containing label-IRI mappings. This mapping file should be in the same directory as the source configuration file. Create a file called `mapping.yml' in the source directory, and copy the following lines into this file:
+
+```yaml
+Necrophagous: http://purl.obolibrary.org/obo/ECOCORE_00000090
+Granivorous: http://purl.obolibrary.org/obo/ECOCORE_00000143
+Fructivore_carpophagous: http://purl.obolibrary.org/obo/ECOCORE_00000136
+Phloem_sap_feeders: http://purl.org/sfwo/SFWO_0000021
+Pollen_feeders: http://purl.obolibrary.org/obo/ECOCORE_00000137
+Rhizophagous: http://purl.obolibrary.org/obo/ECOCORE_00000085
+Zoophage: http://purl.obolibrary.org/obo/ECOCORE_00000088
+```
 
 ### 4. Create the mapping spreadsheet for BETSI
 
