@@ -6,7 +6,9 @@
 
 ## Building a knowledge graph on the trophic ecology of soil organisms using **inteGraph**
 
-In this tutorial, we will provide a step-by-step guide on how to harness the capabilities of **inteGraph** to create a knowledge graph on the trophic ecology of soil fauna from multiple data sources.
+In this tutorial, we will provide a step-by-step guide on how to harness the capabilities of **inteGraph** to create a knowledge graph on the trophic ecology of carabid beetles (Carabidae) from multiple data sources. This knowledge graph will integrate data from two sources:
+- The Biological and Ecological Traits of Soil Invertebrates database (BETSI, https://portail.betsi.cnrs.fr/)
+- The Global Biotic Interactions database (GloBI, https://www.globalbioticinteractions.org/)
 
 ### 0. Set up a triplestore instance and create a repository (optional) 
 
@@ -64,7 +66,7 @@ sfwo="http://purl.org/sfwo/sfwo.owl"
 touch connections.json
 ```
 
-In this tutorial we want to integrate data on trophic interactions of carabid beetles (Carabidae) into our trophic knowledge graph. This interaction data will be extracted from the Global Biotic Interactions (GloBI) database using the [GloBI Web API](https://github.com/globalbioticinteractions/globalbioticinteractions/wiki/API). Copy the following lines into the `connections.json` file we have just created:
+In this tutorial we want to integrate data on trophic interactions of carabid beetles into our trophic knowledge graph. This interaction data will be extracted from GloBI using the [GloBI Web API](https://github.com/globalbioticinteractions/globalbioticinteractions/wiki/API). Copy the following lines into the `connections.json` file we have just created:
 
 ```json
 {
@@ -79,13 +81,57 @@ In this tutorial we want to integrate data on trophic interactions of carabid be
 }
 ```
 
-### Create the source configuration file for FungalTraits
+At runtime, **inteGraph** parses the `connections.json` file and creates as many [Airflow's Connection objects](https://airflow.apache.org/docs/apache-airflow/stable/howto/connection.html) as needed.
 
-### Create the mapping spreadsheet for FungalTraits
+### 3. Create the source configuration file for BETSI
 
-### Create the source configuration file for GloBi
+We will now create a configuration file for the first data source, the BETSI database.
 
-### Create the mapping spreadsheet for GloBi
+```bash
+# Create a new directory for the first data source in the sources directory
+mkdir -p sources/betsi
+
+# Create the source configuration file
+cd sources/betsi
+touch source.cfg
+```
+
+BETSI does not provide programmatic access to its data. Carabid diet data can be downloaded manually from the BETSI web portal. For the purposes of this tutorial, we also provide a download link (with the permission of the data provider).
+
+```bash
+# Create a new directory for storing the data file
+mkdir data
+
+# Download the data file
+wget <link> -P ./data
+```
+
+#### 3.1 Specify metadata for the source
+
+The first section of the source configuration file contains the data source identifier and source metadata. Although the latter is optional, it is recommended that you add source metadata to your knowledge graph to keep track of the provenance of information. Copy the following lines into the `source.cfg` file we have just created:
+
+```ini
+[source]
+id=betsi
+
+[source.metadata]
+title=A database for soil invertebrate biological and ecological traits
+creator=Hedde et al
+subject=araneae, carabidae, chilopoda, diplopoda, earthworms, isopoda
+description=The Biological and Ecological Traits of Soil Invertebrates database (BETSI, https://portail.betsi.cnrs.fr/) is a European database dedicated specifically to soil organisms’ traits.
+date=2021
+format=csv
+identifier=hal-03581637
+language=en
+```
+
+**inteGraph** will append the data source identifier to the graph base IRI specified in the graph configuration file to create the full IRI of the data source, here `https://nleguillarme.github.io/inteGraph/tutorial/trophic-kg/betsi`.
+
+### 4. Create the mapping spreadsheet for BETSI
+
+### 5. Create the source configuration file for GloBi
+
+### 6. Create the mapping spreadsheet for GloBi
 
 ### Execute the data integration pipelines
 
