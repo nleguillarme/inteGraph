@@ -139,18 +139,20 @@ language=en
 #### 3.2 Define semantic annotators
 
 The role of a semantic annotator is to match a piece of data with the concept in the target ontology/taxonomy that best captures its meaning. **inteGraph** allows you to use three types of semantic annotators as part of your data integration pipelines:
-- Taxonomic annotator: map taxon names to entities in a target taxonomy, and/or map taxon identifiers from a source taxonomy to a target taxonomy ;
-- Ontology-based annotator: map free-text descriptions of entities to controlled terms in a target ontology ;
-- Dictionary-based annotator: map entities to controlled terms in a target ontology/taxonomy using a user-supplied YAML mapping file.
+- **Taxonomic annotator:** map taxon names to entities in a target taxonomy, and/or map taxon identifiers from a source taxonomy to a target taxonomy ;
+- **Ontology-based annotator:** map free-text descriptions of entities to controlled terms in a target ontology ;
+- **Dictionary-based annotator:** map entities to controlled terms in a target ontology/taxonomy using a user-supplied YAML mapping file.
 
-All three types of semantic annotators are required to add semantic annotations to BETSI data:
-- A taxonomic annotator is used to map the names in the `taxon_name` column to taxonomic entities in the target taxonomy (NCBI) ;
-- An ontology-based annotator is used to map the dietary terms in the `attribute_trait` column to concepts in the target ontology (SFWO) ;
-- A dictionary-based annotator will be used to map the remaining dietary terms that do not have an exact match in the SFWO.
+All three types of semantic annotators are needed to add semantic annotations to BETSI data:
+- A taxonomic annotator to map the names in the `taxon_name` column to taxonomic entities in the target taxonomy (NCBI) ;
+- An ontology-based annotator to map the dietary terms in the `attribute_trait` column to concepts in the target ontology (SFWO) ;
+- A dictionary-based annotator to map the remaining dietary terms that do not have an exact match in the SFWO.
 
 Annotators are defined in the `[annotators]` section of the source configuration file. Copy the following lines at the end of `source.cfg`:
 
 ```ini
+[annotators]
+
 [annotators.TaxonAnnotator]
 type=taxonomy
 filter_on_ranks=["Carabidae"]
@@ -167,7 +169,7 @@ mapping_file=mapping.yml
 
 **N.B. (1)** the `shortname` property of an ontology-based annotator can only take the name of one of the ontologies specified in the `[ontologies]` section of the graph configuration file.
 
-**N.B. (2)** a dictionary-based annotator expects a YAML file containing label-IRI mappings. This mapping file should be in the same directory as the source configuration file. Create a file called `mapping.yml' in the source directory, and copy the following lines into this file:
+**N.B. (2)** a dictionary-based annotator expects a YAML file containing label-IRI mappings. This mapping file should be in the same directory as the source configuration file. Create a file called `mapping.yml` in the source directory, and copy the following lines into this file:
 
 ```yaml
 Necrophagous: http://purl.obolibrary.org/obo/ECOCORE_00000090
