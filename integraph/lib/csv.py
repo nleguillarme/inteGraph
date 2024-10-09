@@ -34,9 +34,12 @@ def to_ets(filepath, ets_config, delimiter, output_dir):
     index_col = ets_config.get("index_col", None)
     df = read(filepath, sep=delimiter, index_col=index_col)
 
+    index_col = index_col if index_col else "index"
+    df = df.reset_index().rename(columns={index_col: "occurrenceID"})
+
     # Unpivot data frame from wide to long format
     taxon_col = ets_config.get("taxon_col", None)
-    id_vars = [taxon_col] if taxon_col else []
+    id_vars = ["occurrenceID", taxon_col] if taxon_col else []
     id_vars += ets_config.get("additional_cols", [])
     value_vars = ets_config.get("measurement_cols")
 
@@ -47,18 +50,24 @@ def to_ets(filepath, ets_config, delimiter, output_dir):
             value_vars=value_vars,
             var_name="verbatimTraitName",
             value_name="verbatimTraitValue",
-            ignore_index=False,
+            ignore_index=True,
         )
-        # df = df.dropna(subset="traitValue")
-        if ets_config.get("na", None):
-            df["verbatimTraitValue"] = (
-                df["verbatimTraitValue"]
-                .astype(str)
-                .replace(str(ets_config.get("na")), np.nan)
+
+        df = df.dropna(subset=["verbatimTraitValue"])
+        if ets_config.get("na", None) is not None:
+            print(df[df[taxon_col] == "Stella humosa Vasilyeva 1985"])
+            # df["verbatimTraitValue"] = (
+            #     df["verbatimTraitValue"]
+            #     .astype(str)
+            #     .replace(str(ets_config.get("na")), pd.NA)
+            # )
+            df = df.drop(
+                df[
+                    df["verbatimTraitValue"].astype(str) == str(ets_config.get("na"))
+                ].index
             )
-        df = df.dropna(subset="verbatimTraitValue").rename(
-            columns={taxon_col: "verbatimScientificName"}
-        )
+        df = df.rename(columns={taxon_col: "verbatimScientificName"})
+        df = df.reset_index(drop=True)
 
     # Create unit column
     vars_to_units = ets_config.get("units", None)
@@ -73,8 +82,6 @@ def to_ets(filepath, ets_config, delimiter, output_dir):
             )
         ]
 
-    index_col = index_col if index_col else "index"
-    df = df.reset_index().rename(columns={index_col: "occurrenceID"})
     df = df.reset_index().rename(columns={"index": "measurementID"})
 
     output_dir = ensure_path(output_dir)

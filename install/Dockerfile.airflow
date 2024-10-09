@@ -1,4 +1,5 @@
-FROM apache/airflow:2.5.3-python3.10
+FROM apache/airflow:latest-python3.10
+#2.5.3-python3.10
 
 USER root
 
@@ -29,24 +30,12 @@ RUN chown -R airflow: /opt/airflow/
 
 RUN ln -fs /usr/local/bin/python /usr/bin/python
 
-# RUN touch /var/run/docker.sock
-# RUN chown -R airflow:docker /var/run/docker.sock
-
-# Copy entripoint.sh
-# COPY scripts/entrypoint.sh /opt/airflow/entrypoint.sh
-# RUN chmod a+x /opt/airflow/entrypoint.sh
-
 USER airflow
 
 # Install inteGraph requirements
 COPY requirements.txt /requirements.txt
 RUN pip install --upgrade pip
-RUN pip install --user -r /requirements.txt
-
-RUN git clone https://github.com/ccb-hms/ontology-mapper.git \
-    && cd ontology-mapper \
-    && pip install --user -r requirements.txt \
-    && pip install .
+RUN pip install -r /requirements.txt
 
 # See https://stackoverflow.com/questions/71499627/airflow-on-docker-start-get-errortypeerror-init-got-an-unexpected-keywor
 RUN pip uninstall -y argparse

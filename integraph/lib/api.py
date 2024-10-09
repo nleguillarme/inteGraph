@@ -11,6 +11,7 @@ def fetch(
     query=None,
     headers={},
     limit=None,
+    offset=None,
     format="csv",
 ):
     from airflow.providers.http.hooks.http import HttpHook
@@ -19,12 +20,13 @@ def fetch(
     http = HttpHook(method="GET", http_conn_id=conn_id)
     responses = []
     if limit:
-        offset = 0
+        # offset = 0
         while True:
             paginated_query = query + f"&offset={offset}&limit={limit}"
             response = get_response(http, endpoint, paginated_query, headers)
             response.raise_for_status()
             nb_results = get_nb_results(response, format)
+            print("Results = ", nb_results)
             if nb_results:
                 responses.append(response)
                 offset += nb_results

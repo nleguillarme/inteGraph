@@ -18,7 +18,6 @@ def normalize_names(names):
         for i in range(len(data)):
             if data[i].get("canonical"):
                 canonical_names[i] = data[i].get("canonical").get("full")
-        # canonical_names = [name.get("canonical").get("full") for name in data]
     assert len(names) == len(canonical_names)
     return {
         names[i]: canonical_names[i] if not isna(canonical_names[i]) else ""

@@ -155,6 +155,9 @@ class TaxonomyAnnotator(Annotator):
             df[df[iri_col].isna()].drop_duplicates(subset=subset).replace("", np.nan)
         )
 
+        if taxa_to_annotate.empty:
+            return df
+
         # Prepare taxonomic data for annotation
         if id_col and self.source != "default":
             # Build prefixed taxonomic ids
@@ -217,6 +220,9 @@ class TaxonomyAnnotator(Annotator):
             df.dropna(subset=id_col).drop_duplicates(subset=subset).replace("", np.nan)
         )
         mapped = pd.DataFrame()
+        if df.empty:
+            return mapped
+
         target = "ncbi"
         not_found = taxa_to_map
         for matcher in ["wikidata-web", "ott", target]:

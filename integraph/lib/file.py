@@ -65,7 +65,10 @@ def get_url(url, root_dir):
 
 def fetch(url, output_dir, filename=None):
     session = _get_session()
-    with session.get(url, allow_redirects=True, stream=True) as resp:
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux i686; rv:110.0) Gecko/20100101 Firefox/110.0."
+    }
+    with session.get(url, allow_redirects=True, stream=True, headers=headers) as resp:
         resp.raw.decode_content = True
         resp.raise_for_status()
         if not filename:

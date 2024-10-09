@@ -46,16 +46,17 @@ class OntologyAnnotator(Annotator):
         if label_col:
             iri_map = {}
             terms = [t.lower() for t in drop_df[label_col].tolist()]
-            mapped_df = text2term.map_terms(
-                terms,
-                self.ontology,
-                use_cache=True,
-                excl_deprecated=True,
-                mapper=Mapper.JARO,
-                min_score=0.95,
-                term_type="any",
-                incl_unmapped=True,
-            )
+            if terms:
+                mapped_df = text2term.map_terms(
+                    terms,
+                    self.ontology,
+                    use_cache=True,
+                    excl_deprecated=True,
+                    mapper=Mapper.JARO,
+                    min_score=0.98,
+                    term_type="any",
+                    incl_unmapped=True,
+                )
             for term in terms:
                 iri_map[term] = None
                 matches = mapped_df[
