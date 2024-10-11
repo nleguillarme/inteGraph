@@ -87,7 +87,7 @@ x-airflow-common:
     - ${PWD}:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     # - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
-    - ${INTEGRAPH__CONFIG__HOST_CONFIG_DIR}:/opt/airflow/config
+    # - ${INTEGRAPH__CONFIG__HOST_CONFIG_DIR}:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
     - ${AIRFLOW_PROJ_DIR:-.}/tmp:/tmp
     - /var/run/docker.sock:/var/run/docker.sock
@@ -160,6 +160,8 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+    volumes:
+      - ${INTEGRAPH__CONFIG__HOST_CONFIG_DIR}:/opt/airflow/config
 
   airflow-worker:
     <<: *airflow-common

@@ -47,3 +47,5 @@ clean:
 	sudo rm -r "${INTEGRAPH__CONFIG__CACHE_DIR}"
 
 upgrade: down build reset init
+
+install: build reset init

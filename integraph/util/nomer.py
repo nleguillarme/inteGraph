@@ -41,7 +41,7 @@ class NomerHelper:
         self.logger = logging.getLogger(__name__)
         self.client = docker.from_env()
         self.nomer_image = "nomer:latest"
-        self.nomer_cache_dir = os.getenv("INTEGRAPH__CONFIG__NOMER_CACHE_DIR")
+        self.nomer_cache_dir = os.getenv("INTEGRAPH_NOMER_CACHE_DIR")
         self.volume = {
             os.path.abspath(self.nomer_cache_dir): {
                 "bind": "/root/.cache/nomer",

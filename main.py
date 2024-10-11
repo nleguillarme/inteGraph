@@ -18,14 +18,14 @@ import text2term
 logger = logging.getLogger(__name__)
 
 
-run_in_test_mode = strtobool(os.getenv("INTEGRAPH__EXEC__TEST_MODE", default="false"))
+run_in_test_mode = strtobool(os.getenv("INTEGRAPH_TEST_MODE", default="false"))
 if run_in_test_mode == True:
     logger.info("Run in dev mode. The load module is skipped in dev mode.")
 
 
 ### Read graph config
 root_dir = ensure_path(
-    os.getenv("INTEGRAPH__CONFIG__ROOT_CONFIG_DIR", default="/opt/airflow/config")
+    os.getenv("INTEGRAPH_GRAPH_CONFIG_DIR", default="/opt/airflow/config")
 )
 graph_path = root_dir / "graph.cfg"
 graph_cfg = read_config(root_dir / "graph.cfg")
