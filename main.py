@@ -25,7 +25,7 @@ if run_in_test_mode == True:
 
 ### Read graph config
 root_dir = ensure_path(
-    os.getenv("INTEGRAPH_GRAPH_CONFIG_DIR", default="/opt/airflow/config")
+    os.getenv("INTEGRAPH_GRAPH_CONFIG_DIR", default="/opt/airflow/graph-config")
 )
 graph_path = root_dir / "graph.cfg"
 graph_cfg = read_config(root_dir / "graph.cfg")
